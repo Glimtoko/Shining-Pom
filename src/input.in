@@ -1,0 +1,6 @@
+nsteps    = 1000                # Max timesteps
+ncells    = 50 50             # X, Y
+xrange    = 0.0 1.0
+yrange    = 0.0 1.0
+title     = "Sod"
+problem   = 1                   # Problem number
