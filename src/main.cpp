@@ -20,11 +20,10 @@
 #include <fenv.h>
 
 int main(int argc, char* argv[]) {
-    feenableexcept(FE_INVALID | FE_OVERFLOW);
+//     feenableexcept(FE_INVALID | FE_OVERFLOW);
     amrex::Initialize(argc, argv, MPI::COMM_WORLD);
 
     {
-    double gamma = 1.4;
 
     // Test basic parallel information
     int myRank = amrex::ParallelDescriptor::MyProc();
@@ -33,9 +32,21 @@ int main(int argc, char* argv[]) {
     // Parse user input
     amrex::ParmParse pp;
 
+    // Gamma
+    double gamma;
+    if (!pp.query("gamma", gamma)) {
+        gamma = 1.4;
+    }
+
     // Max timesteps
     int maxSteps = -1;
     pp.query("nsteps", maxSteps);
+
+    double tend = 0.25;
+    pp.query("tend", tend);
+
+    double dtOut = 2.0;
+    pp.query("dtOut", dtOut);
 
     // Grid resolution at base layer
     amrex::Vector<int> nCells;
@@ -58,17 +69,34 @@ int main(int argc, char* argv[]) {
     amrex::Print() << "maxSteps = " << maxSteps << std::endl;
     amrex::Print() << AMREX_SPACEDIM << std::endl;
 
-    // Problem specific settings
+    // Default boundary conditions
     auto xLeft = amrex::BCType::reflect_even;
     auto xRight = amrex::BCType::reflect_even;
     auto yDown = amrex::BCType::reflect_even;
     auto yUp = amrex::BCType::reflect_even;
 
     // Function pointer to set up
-    void (*init) (amrex::Box const&,
+    void (*initFunction) (amrex::Box const&,
     amrex::Array4<amrex::Real> const&,
     amrex::Geometry const&,
     double);
+
+
+    // Set problem details
+    int problem;
+    pp.get("problem", problem);
+
+    if (problem == 1) {
+        initFunction = &setGeometrySodX;
+    } else if (problem == 2) {
+        initFunction = &setGeometrySodY;
+    } else if (problem = 4) {
+        initFunction = &setGeometryTriple;
+        xRight = amrex::BCType::reflect_odd;
+        yDown = amrex::BCType::reflect_odd;
+        yUp = amrex::BCType::reflect_odd;
+    }
+
 
     // Construct base layer box
     amrex::Box domainLogical(amrex::IntVect{AMREX_D_DECL(0, 0, 0)},
@@ -108,24 +136,24 @@ int main(int argc, char* argv[]) {
     amrex::Vector<amrex::BCRec> boundaries(stateOld.nComp());
 
     // X boundaries
-    boundaries[QUANT_RHO].setLo(0, xLeft);
-    boundaries[QUANT_RHO].setHi(0, xRight);
+    boundaries[QUANT_RHO].setLo(0, amrex::BCType::reflect_even);
+    boundaries[QUANT_RHO].setHi(0, amrex::BCType::reflect_even);
     boundaries[QUANT_MOMU].setLo(0, xLeft);
     boundaries[QUANT_MOMU].setHi(0, xRight);
     boundaries[QUANT_MOMV].setLo(0, xLeft);
     boundaries[QUANT_MOMV].setHi(0, xRight);
-    boundaries[QUANT_E].setLo(0, xLeft);
-    boundaries[QUANT_E].setHi(0, xRight);
+    boundaries[QUANT_E].setLo(0, amrex::BCType::reflect_even);
+    boundaries[QUANT_E].setHi(0, amrex::BCType::reflect_even);
 
     // Y boundaries
-    boundaries[QUANT_RHO].setLo(1, yDown);
-    boundaries[QUANT_RHO].setHi(1, yUp);
+    boundaries[QUANT_RHO].setLo(1, amrex::BCType::reflect_even);
+    boundaries[QUANT_RHO].setHi(1, amrex::BCType::reflect_even);
     boundaries[QUANT_MOMU].setLo(1, yDown);
     boundaries[QUANT_MOMU].setHi(1, yUp);
     boundaries[QUANT_MOMV].setLo(1, yDown);
     boundaries[QUANT_MOMV].setHi(1, yUp);
-    boundaries[QUANT_E].setLo(1, yDown);
-    boundaries[QUANT_E].setHi(1, yUp);
+    boundaries[QUANT_E].setLo(1, amrex::BCType::reflect_even);
+    boundaries[QUANT_E].setHi(1, amrex::BCType::reflect_even);
 
     // Problem initialisation
     for (amrex::MFIter mfi(stateOld); mfi.isValid(); ++mfi)
@@ -134,7 +162,7 @@ int main(int argc, char* argv[]) {
         amrex::FArrayBox& fab = stateOld[mfi];
         amrex::Array4<amrex::Real> const& a = fab.array();
 
-        setGeometrySodX(box, a, geom, gamma);
+        initFunction(box, a, geom, gamma);
     }
 
     // Update boundaries
@@ -146,8 +174,12 @@ int main(int argc, char* argv[]) {
 
     const auto dx = geom.CellSizeArray();
 
-    double tend = 0.25;
+    amrex::Vector<std::string> varNames = {
+        "Rho", "MomU", "MomV", "E", "DT"
+    };
+
     double t = 0;
+    double outNext = t + dtOut;
     for (int step=1; step<maxSteps; step++) {
         for (amrex::MFIter mfi(stateOld); mfi.isValid(); ++mfi) // Loop over grids
         {
@@ -170,6 +202,7 @@ int main(int argc, char* argv[]) {
             });
         }
         double dt = stateNew.min(QUANT_DT);
+        dt = std::min(dt, outNext - t);
         t += dt;
         amrex::Print() << "Step " << step
                         << ", t = " << t
@@ -201,17 +234,18 @@ int main(int argc, char* argv[]) {
         stateOld.FillBoundary(geom.periodicity());
         amrex::FillDomainBoundary(stateOld, geom, boundaries);
 
+        if (t >= outNext) {
+            outNext += dtOut;
+
+            amrex::MultiFab::Copy(stateOld, stateNew, 0, 0, 5, 2);
+
+            const std::string& pfname = amrex::Concatenate("output/sod",step);
+
+            amrex::WriteSingleLevelPlotfile(pfname, stateOld, varNames, geom, t, 1);
+        }
+
         if (t >= tend) break;
     }
-
-    // Final copy to update DT
-    amrex::MultiFab::Copy(stateOld, stateNew, 0, 0, 5, 2);
-
-    amrex::Vector<std::string> varNames = {
-        "Rho", "MomU", "MomV", "E", "DT"
-    };
-
-    amrex::WriteSingleLevelPlotfile("sod", stateOld, varNames, geom, 0.0, 1);
 
     amrex::Print() << "DONE" << std::endl;
     }

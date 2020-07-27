@@ -1,7 +1,7 @@
 CC = mpic++
 #CFLAGS = -g -Wall -Wextra -ansi -pedantic -fsanitize=address -std=c++17
-CFLAGS = -g -std=c++17
-#CFLAGS = -O3 -std=c++17
+#CFLAGS = -g -std=c++17 -fsanitize=address
+CFLAGS = -O3 -std=c++17
 
 OBJECTS = hydro_flux.o hydro_timestep.o hydro_MH2D.o initialise.o main.o
 
