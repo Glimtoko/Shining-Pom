@@ -128,9 +128,19 @@ int main(int argc, char* argv[]) {
     amrex::DistributionMapping distMap {boxArray};
     amrex::Print() << distMap << std::endl;
 
-    // Set data storage (4 quantities, 2 ghost layers)
+    // Set data storage (5 quantities, 2 ghost layers)
     amrex::MultiFab stateOld(boxArray, distMap, 5, 2);
     amrex::MultiFab stateNew(boxArray, distMap, 5, 2);
+
+    // Set MH reconstruction storage (4 quants, due to no DT)
+    amrex::MultiFab leftMH(boxArray, distMap, 4, 2);
+    amrex::MultiFab rightMH(boxArray, distMap, 4, 2);
+    amrex::MultiFab upMH(boxArray, distMap, 4, 2);
+    amrex::MultiFab downMH(boxArray, distMap, 4, 2);
+
+    // Set flux storage
+    amrex::MultiFab fluxX(boxArray, distMap, 4, 2);
+    amrex::MultiFab fluxY(boxArray, distMap, 4, 2);
 
     // Set boundary conditions
     amrex::Vector<amrex::BCRec> boundaries(stateOld.nComp());
@@ -172,6 +182,14 @@ int main(int argc, char* argv[]) {
     // Initialise stateNew as a copy of stateOld
     amrex::MultiFab::Copy(stateNew, stateOld, 0, 0, 4, 2);
 
+    amrex::MultiFab::Copy(leftMH, stateOld, 0, 0, 4, 2);
+    amrex::MultiFab::Copy(rightMH, stateOld, 0, 0, 4, 2);
+    amrex::MultiFab::Copy(upMH, stateOld, 0, 0, 4, 2);
+    amrex::MultiFab::Copy(downMH, stateOld, 0, 0, 4, 2);
+
+    amrex::MultiFab::Copy(fluxX, stateOld, 0, 0, 4, 2);
+    amrex::MultiFab::Copy(fluxY, stateOld, 0, 0, 4, 2);
+
     const auto dx = geom.CellSizeArray();
 
     amrex::Vector<std::string> varNames = {
@@ -209,6 +227,75 @@ int main(int argc, char* argv[]) {
                         << ", dt = " << dt
                         << std::endl;
 
+
+        // MUSCL-Hancock data reconstruction
+        for (amrex::MFIter mfi(stateOld); mfi.isValid(); ++mfi) // Loop over grids
+        {
+            const amrex::Box& box = mfi.growntilebox(1);
+
+            amrex::FArrayBox& fOld = stateOld[mfi];
+            amrex::FArrayBox& fLeft = leftMH[mfi];
+            amrex::FArrayBox& fRight = rightMH[mfi];
+            amrex::FArrayBox& fUp = upMH[mfi];
+            amrex::FArrayBox& fDown = downMH[mfi];
+
+            amrex::Array4<amrex::Real> const& sOld = fOld.array();
+            amrex::Array4<amrex::Real> const& lMH = fLeft.array();
+            amrex::Array4<amrex::Real> const& rMH = fRight.array();
+            amrex::Array4<amrex::Real> const& uMH = fUp.array();
+            amrex::Array4<amrex::Real> const& dMH = fDown.array();
+
+            amrex::ParallelFor(box,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                Hydro::MUSCLHancock2D_Reconstruct(
+                    sOld,
+                    i, j, k,
+                    gamma, dt, dx[0,0], dx[0,1],
+                    lMH,
+                    rMH,
+                    dMH,
+                    uMH
+                );
+            });
+        }
+
+
+        // Calculate and store fluxes
+        for (amrex::MFIter mfi(stateOld); mfi.isValid(); ++mfi) // Loop over grids
+        {
+            const amrex::Box& box = mfi.growntilebox(1);
+
+            amrex::FArrayBox& fLeft = leftMH[mfi];
+            amrex::FArrayBox& fRight = rightMH[mfi];
+            amrex::FArrayBox& fUp = upMH[mfi];
+            amrex::FArrayBox& fDown = downMH[mfi];
+
+            amrex::FArrayBox& ffX = fluxX[mfi];
+            amrex::FArrayBox& ffY = fluxY[mfi];
+
+            amrex::Array4<amrex::Real> const& lMH = fLeft.array();
+            amrex::Array4<amrex::Real> const& rMH = fRight.array();
+            amrex::Array4<amrex::Real> const& uMH = fUp.array();
+            amrex::Array4<amrex::Real> const& dMH = fDown.array();
+
+            amrex::Array4<amrex::Real> const& fX = ffX.array();
+            amrex::Array4<amrex::Real> const& fY = ffY.array();
+
+            amrex::ParallelFor(box,
+            [=] AMREX_GPU_DEVICE (int i, int j, int k)
+            {
+                Hydro::calculateFluxes(
+                    lMH, rMH, dMH, uMH,
+                    i, j, k,
+                    gamma,
+                    fX, fY
+                );
+            });
+        }
+
+
+        // Update to new state
         for (amrex::MFIter mfi(stateOld); mfi.isValid(); ++mfi) // Loop over grids
         {
             const amrex::Box& box = mfi.validbox();
@@ -217,12 +304,20 @@ int main(int argc, char* argv[]) {
             amrex::FArrayBox& fNew = stateNew[mfi];
             amrex::Array4<amrex::Real> const& sOld = fOld.array();
             amrex::Array4<amrex::Real> const& sNew = fNew.array();
+
+            amrex::FArrayBox& ffX = fluxX[mfi];
+            amrex::FArrayBox& ffY = fluxY[mfi];
+
+            amrex::Array4<amrex::Real> const& fX = ffX.array();
+            amrex::Array4<amrex::Real> const& fY = ffY.array();
+
             amrex::ParallelFor(box,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                Hydro::MUSCLHancock2D(
-                    sOld, i, j, k, 0,
-                    gamma, dt, dx[0,0], dx[0,1],
+                Hydro::update(
+                    sOld, fX, fY,
+                    i, j, k,
+                    dt, dx[0,0], dx[0,1],
                     sNew
                 );
             });
