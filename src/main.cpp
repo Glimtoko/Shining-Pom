@@ -130,7 +130,6 @@ int main(int argc, char* argv[]) {
 
     // Set data storage (5 quantities, 2 ghost layers)
     amrex::MultiFab stateOld(boxArray, distMap, 5, 2);
-    amrex::MultiFab stateNew(boxArray, distMap, 5, 2);
 
     // Set MH reconstruction storage (4 quants, due to no DT)
     amrex::MultiFab leftMH(boxArray, distMap, 4, 2);
@@ -179,9 +178,7 @@ int main(int argc, char* argv[]) {
     stateOld.FillBoundary(geom.periodicity());
     amrex::FillDomainBoundary(stateOld, geom, boundaries);
 
-    // Initialise stateNew as a copy of stateOld
-    amrex::MultiFab::Copy(stateNew, stateOld, 0, 0, 4, 2);
-
+    // Initialise reconstruction and flux "states"
     amrex::MultiFab::Copy(leftMH, stateOld, 0, 0, 4, 2);
     amrex::MultiFab::Copy(rightMH, stateOld, 0, 0, 4, 2);
     amrex::MultiFab::Copy(upMH, stateOld, 0, 0, 4, 2);
@@ -204,9 +201,7 @@ int main(int argc, char* argv[]) {
             const amrex::Box& box = mfi.validbox();
 
             amrex::FArrayBox& fOld = stateOld[mfi];
-            amrex::FArrayBox& fNew = stateNew[mfi];
             amrex::Array4<amrex::Real> const& sOld = fOld.array();
-            amrex::Array4<amrex::Real> const& sNew = fNew.array();
 
             amrex::ParallelFor(box,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
@@ -214,12 +209,11 @@ int main(int argc, char* argv[]) {
                 Hydro::getCellTimestep(
                     sOld,
                     i, j, k,
-                    1.4, dx[0,0], dx[0,1], 0.6, 0.1,
-                    sNew
+                    1.4, dx[0,0], dx[0,1], 0.6, 0.1
                     );
             });
         }
-        double dt = stateNew.min(QUANT_DT);
+        double dt = stateOld.min(QUANT_DT);
         dt = std::min(dt, outNext - t);
         t += dt;
         amrex::Print() << "Step " << step
@@ -301,9 +295,7 @@ int main(int argc, char* argv[]) {
             const amrex::Box& box = mfi.validbox();
 
             amrex::FArrayBox& fOld = stateOld[mfi];
-            amrex::FArrayBox& fNew = stateNew[mfi];
             amrex::Array4<amrex::Real> const& sOld = fOld.array();
-            amrex::Array4<amrex::Real> const& sNew = fNew.array();
 
             amrex::FArrayBox& ffX = fluxX[mfi];
             amrex::FArrayBox& ffY = fluxY[mfi];
@@ -317,23 +309,18 @@ int main(int argc, char* argv[]) {
                 Hydro::update(
                     sOld, fX, fY,
                     i, j, k,
-                    dt, dx[0,0], dx[0,1],
-                    sNew
+                    dt, dx[0,0], dx[0,1]
                 );
             });
 
         }
 
-        // Copy and update
-        amrex::MultiFab::Copy(stateOld, stateNew, 0, 0, 4, 2);
+        // Update boundaries
         stateOld.FillBoundary(geom.periodicity());
         amrex::FillDomainBoundary(stateOld, geom, boundaries);
 
         if (t >= outNext) {
             outNext += dtOut;
-
-            amrex::MultiFab::Copy(stateOld, stateNew, 0, 0, 5, 2);
-
             const std::string& pfname = amrex::Concatenate("output/sod",step);
 
             amrex::WriteSingleLevelPlotfile(pfname, stateOld, varNames, geom, t, 1);

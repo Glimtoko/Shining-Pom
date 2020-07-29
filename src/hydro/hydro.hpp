@@ -52,22 +52,13 @@ namespace Hydro {
         amrex::Array4<amrex::Real> const& fluxX,
         amrex::Array4<amrex::Real> const& fluxY,
         int i, int j, int k,
-        double dt, double dx, double dy,
-        amrex::Array4<amrex::Real> const& stateNew
-    );
-
-    double getTimestep(
-        double *rho, double *momU, double *momV, double *E,
-        double dx, double dy,
-        int nCells,
-        double gamma, double cfl, double dtmax
+        double dt, double dx, double dy
     );
 
     void getCellTimestep(
     amrex::Array4<amrex::Real> const& stateOld,
     int i, int j, int k,
-    double gamma, double dx, double dy, double cfl, double dtmax,
-    amrex::Array4<amrex::Real> const& stateNew
+    double gamma, double dx, double dy, double cfl, double dtmax
     );
 }
 
