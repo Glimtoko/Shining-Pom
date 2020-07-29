@@ -2,6 +2,7 @@
 *.d
 
 # Compiled Object files
+obj
 *.slo
 *.lo
 *.o
@@ -31,3 +32,4 @@
 *.out
 *.app
 shiningpom
+bin

@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="ShiningPom" />
+		<Option pch_mode="2" />
+		<Option compiler="gnu_gcc_mpi_compiler" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/ShiningPom" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gnu_gcc_mpi_compiler" />
+				<Option parameters="input.in" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/ShiningPom" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gnu_gcc_mpi_compiler" />
+				<Option parameters="input.in" />
+				<Option host_application="mpirun -np 6" />
+				<Option run_host_application_in_terminal="1" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+			<Add directory="/home/nick/MyLibs/AMReX2D/include" />
+		</Compiler>
+		<Linker>
+			<Add library="/home/nick/MyLibs/AMReX2D/lib/libamrex.a" />
+		</Linker>
+		<Unit filename="hydro/hydro.hpp" />
+		<Unit filename="hydro/hydro_MH2D_Construct.cpp" />
+		<Unit filename="hydro/hydro_flux.cpp" />
+		<Unit filename="hydro/hydro_timestep.cpp" />
+		<Unit filename="hydro/hydro_update.cpp" />
+		<Unit filename="initialise.cpp" />
+		<Unit filename="initialise.hpp" />
+		<Unit filename="main.cpp" />
+		<Unit filename="shiningpom.hpp" />
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>
