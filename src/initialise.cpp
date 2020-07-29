@@ -24,14 +24,12 @@ void setGeometrySodX (
     const auto lo = lbound(bx);
     const auto hi = ubound(bx);
 
-    const auto x0 = geom.ProbLo(0) + dx[0,0]/2.0;
-    const auto y0 = geom.ProbLo(1) + dx[0,1]/2.0;
+    const auto x0 = geom.ProbLo(0) + dx[0]/2.0;
 
     for (int k = lo.z; k <= hi.z; ++k) {
         for (int j = lo.y; j <= hi.y; ++j) {
             for (int i = lo.x; i <= hi.x; ++i) {
-                auto x = x0 + dx[0,0]*i;
-                auto y = y0 + dx[0,1]*j;
+                auto x = x0 + dx[0]*i;
                 double e = x < xInt ? pL/((gamma - 1.0)*rhoL) : pR/((gamma - 1.0)*rhoR);
 
                 a(i, j, k, QUANT_RHO) = x < xInt ? rhoL : rhoR;
@@ -65,14 +63,12 @@ void setGeometrySodY (
     const auto lo = lbound(bx);
     const auto hi = ubound(bx);
 
-    const auto x0 = geom.ProbLo(0) + dx[0,0]/2.0;
-    const auto y0 = geom.ProbLo(1) + dx[0,1]/2.0;
+    const auto y0 = geom.ProbLo(1) + dx[1]/2.0;
 
     for (int k = lo.z; k <= hi.z; ++k) {
         for (int j = lo.y; j <= hi.y; ++j) {
             for (int i = lo.x; i <= hi.x; ++i) {
-                auto x = x0 + dx[0,0]*i;
-                auto y = y0 + dx[0,1]*j;
+                auto y = y0 + dx[1]*j;
                 double e = y < yInt ? pL/((gamma - 1.0)*rhoL) : pR/((gamma - 1.0)*rhoR);
 
                 a(i, j, k, QUANT_RHO) = y < yInt ? rhoL : rhoR;
@@ -99,14 +95,14 @@ void setGeometryTriple (
     const auto lo = lbound(bx);
     const auto hi = ubound(bx);
 
-    const auto x0 = geom.ProbLo(0) + dx[0,0]/2.0;
-    const auto y0 = geom.ProbLo(1) + dx[0,1]/2.0;
+    const auto x0 = geom.ProbLo(0) + dx[0]/2.0;
+    const auto y0 = geom.ProbLo(1) + dx[1]/2.0;
 
     for (int k = lo.z; k <= hi.z; ++k) {
         for (int j = lo.y; j <= hi.y; ++j) {
             for (int i = lo.x; i <= hi.x; ++i) {
-                auto x = x0 + dx[0,0]*i;
-                auto y = y0 + dx[0,1]*j;
+                auto x = x0 + dx[0]*i;
+                auto y = y0 + dx[1]*j;
                 double r = sqrt(pow(y - yInt, 2) + pow(x - xInt, 2));
                 if (r <= 2.0) {
                     a(i, j, k, QUANT_RHO) = 1.0;

@@ -90,11 +90,14 @@ int main(int argc, char* argv[]) {
         initFunction = &setGeometrySodX;
     } else if (problem == 2) {
         initFunction = &setGeometrySodY;
-    } else if (problem = 4) {
+    } else if (problem == 4) {
         initFunction = &setGeometryTriple;
         xRight = amrex::BCType::reflect_odd;
         yDown = amrex::BCType::reflect_odd;
         yUp = amrex::BCType::reflect_odd;
+    } else {
+        // Default to X-Sod
+        initFunction = &setGeometrySodX;
     }
 
 
@@ -209,7 +212,7 @@ int main(int argc, char* argv[]) {
                 Hydro::getCellTimestep(
                     sOld,
                     i, j, k,
-                    1.4, dx[0,0], dx[0,1], 0.6, 0.1
+                    1.4, dx[0], dx[1], 0.6, 0.1
                     );
             });
         }
@@ -245,7 +248,7 @@ int main(int argc, char* argv[]) {
                 Hydro::MUSCLHancock2D_Reconstruct(
                     sOld,
                     i, j, k,
-                    gamma, dt, dx[0,0], dx[0,1],
+                    gamma, dt, dx[0], dx[1],
                     lMH,
                     rMH,
                     dMH,
@@ -309,7 +312,7 @@ int main(int argc, char* argv[]) {
                 Hydro::update(
                     sOld, fX, fY,
                     i, j, k,
-                    dt, dx[0,0], dx[0,1]
+                    dt, dx[0], dx[1]
                 );
             });
 
