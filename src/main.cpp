@@ -22,8 +22,9 @@
 int main(int argc, char* argv[]) {
 //     feenableexcept(FE_INVALID | FE_OVERFLOW);
     amrex::Initialize(argc, argv, MPI::COMM_WORLD);
-
     {
+
+    // TODO: AMR
 
     // Test basic parallel information
     int myRank = amrex::ParallelDescriptor::MyProc();
