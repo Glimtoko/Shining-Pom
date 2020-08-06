@@ -7,7 +7,9 @@
 #include <AMReX_PhysBCFunct.H>
 
 #include "AmrCorePom.hpp"
+#include "initialise.hpp"
 #include "shiningpom.hpp"
+#include "hydro/hydro.hpp"
 
 
 using namespace amrex; 
@@ -73,12 +75,50 @@ AmrCorePom::~AmrCorePom()
 {
 }
 
+// Advance solution to final time
+void AmrCorePom::Evolve()
+{
+    Real cur_time = t_new[0];
+    int last_plot_file_step = 0;
+
+    for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step) {
+        amrex::Print() << "\nCoarse STEP " << step+1 << " starts ..." << std::endl;
+
+        ComputeDt();
+
+        int lev = 0;
+        int iteration = 1;
+        timeStep(lev, cur_time, iteration);
+
+        cur_time += dt[0];
+
+        amrex::Print() << "Coarse STEP " << step+1 << " ends." << " TIME = " << cur_time
+                        << " DT = " << dt[0]  << std::endl;
+
+        // sync up time
+        for (lev = 0; lev <= finest_level; ++lev) {
+            t_new[lev] = cur_time;
+        }
+
+        if (plot_int > 0 && (step+1) % plot_int == 0) {
+            last_plot_file_step = step+1;
+            WritePlotFile();
+        }
+
+        if (cur_time >= stop_time - 1.e-6*dt[0]) break;
+    }
+
+    if (plot_int > 0 && istep[0] > last_plot_file_step) {
+	    WritePlotFile();
+    }
+}
 
 // Initialise
-AmrCorePom::InitData()
+void AmrCorePom::InitData()
 {
     // For now, we always initialise from scratch
-    InitFromScratch();
+    const Real time = 0.0;
+    InitFromScratch(time);
 
     if (plot_int > 0) WritePlotFile();
 }
@@ -191,8 +231,9 @@ void AmrCorePom::MakeNewLevelFromScratch(
     {
         const Box& box  = mfi.validbox();
         amrex::FArrayBox& fab = state[mfi];
+        amrex::Array4<amrex::Real> const& a = fab.array();
 
-        setGeometrySodX(box, fab, geom, 1.4);
+        setGeometrySodX(box, a, geom[lev], 1.4);
     }
 }
 
@@ -217,29 +258,36 @@ void AmrCorePom::ErrorEst(
     const Real* dx      = geom[lev].CellSize();
     const Real* prob_lo = geom[lev].ProbLo();
 
-    const MultiFab& state = phi_new[lev];
+    MultiFab& state = phi_new[lev];
 
-    Vector<int>  itags;
+    Vector<int> itags;
     for (MFIter mfi(state,true); mfi.isValid(); ++mfi)
 	{
 	    const Box& tilebox  = mfi.tilebox();
         TagBox& tagfab  = tags[mfi];
         tagfab.get_itags(itags, tilebox);
 
-        const int* lo = tilebox.loVect();
-	    const int* hi = tilebox.hiVect();
+        const auto lo = lbound(tilebox);
+	    const auto hi = ubound(tilebox);
 
         amrex::FArrayBox& fab = state[mfi];
+        amrex::Array4<amrex::Real> const& a = fab.array();
 
+        tagfab.get_itags(itags, tilebox);
+
+        int idx = 0;
         for (int k = lo.z; k <= hi.z; ++k) {
             for (int j = lo.y; j <= hi.y; ++j) {
                 for (int i = lo.x; i <= hi.x; ++i) {
-                }
-                if (fab(i, j, k, QUANT_E) > e_refine[lev]) {
-                    tagfab(i, j, k) = 1;
+                    if (a(i, j, k, QUANT_E) > e_refine[lev]) {
+                        itags[idx] = 1;
+                        idx++;
+                    }
                 }
             }
         }
+
+        tagfab.tags_and_untags(itags, tilebox);
     }
 }
 
@@ -273,7 +321,7 @@ AmrCorePom::AverageDownTo(int crse_lev)
 
 // compute a new multifab by coping in phi from valid region and filling ghost cells
 // works for single level and 2-level cases (fill fine grid ghost by interpolating from coarse)
-void AmrCoreAdv::FillPatch(
+void AmrCorePom::FillPatch(
     int lev,
     Real time,
     MultiFab& mf,
@@ -489,80 +537,156 @@ void AmrCorePom::Advance(
     FillPatch(lev, time, Sborder, 0, Sborder.nComp());
 
     {
-	    FArrayBox& flux[BL_SPACEDIM];
-        FArrayBox& mhLR[BL_SPACEDIM];
-        FArrayBox& mhUD[BL_SPACEDIM];
+	    FArrayBox flux[BL_SPACEDIM];
 
         for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi) {
             const Box& bx = mfi.tilebox();
 
-            const FArrayBox& statein = Sborder[mfi];
+            FArrayBox& statein = Sborder[mfi];
             FArrayBox& stateout      =   S_new[mfi];
 
             // Allocate fabs for fluxes and MUSCL-Hancock construction.
             for (int i = 0; i < BL_SPACEDIM ; i++) {
                 const Box& bxtmp = amrex::surroundingNodes(bx,i);
                 flux[i].resize(bxtmp, S_new.nComp());
-                mhLR[i].resize(bxtmp, S_new.nComp());
-                mhUD[i].resize(bxtmp, S_new.nComp());
             }
 
-            // MUSCL-Hancock Reconstruction
+            // MUSCL-Hancock/Godunov update
             amrex::Array4<amrex::Real> const& sOld = statein.array();
-            amrex::Array4<amrex::Real> const& lMH = mhLR[0].array();
-            amrex::Array4<amrex::Real> const& rMH = mhLR[1].array();
-            amrex::Array4<amrex::Real> const& uMH = mhUD[0].array();
-            amrex::Array4<amrex::Real> const& dMH = mhUD[1].array();
-
-            amrex::ParallelFor(box,
+            amrex::Array4<amrex::Real> const& sNew = stateout.array();
+            amrex::ParallelFor(bx,
             [=] AMREX_GPU_DEVICE (int i, int j, int k)
             {
-                Hydro::MUSCLHancock2D_Reconstruct(
-                    sOld,
-                    i, j, k,
-                    gamma, dt, dx[0], dx[1],
-                    lMH, rMH, dMH, uMH
+                Hydro::MUSCLHancock2D(
+                    sOld, i, j, k, 0,
+                    gamma, dt_lev, dx[0], dx[1],
+                    sNew
                 );
             });
 
-            // Calculate fluxes
-            amrex::Array4<amrex::Real> const& fX = flux[0].array();
-            amrex::Array4<amrex::Real> const& fY = flux[0].array();
-
-            amrex::ParallelFor(box,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                Hydro::calculateFluxes(
-                    lMH, rMH, dMH, uMH,
-                    i, j, k,
-                    gamma,
-                    fX, fY
-                );
-            });
-
-            // compute velocities on faces (prescribed function of space and time)
-            // get_face_velocity(&lev, &ctr_time,
-            //         AMREX_D_DECL(BL_TO_FORTRAN(uface[0]),
-            //             BL_TO_FORTRAN(uface[1]),
-            //             BL_TO_FORTRAN(uface[2])),
-            //         dx, prob_lo);
-
-                // compute new state (stateout) and fluxes.
-            //     advect(&time, bx.loVect(), bx.hiVect(),
-            // BL_TO_FORTRAN_3D(statein),
-            // BL_TO_FORTRAN_3D(stateout),
-            // AMREX_D_DECL(BL_TO_FORTRAN_3D(uface[0]),
-            //     BL_TO_FORTRAN_3D(uface[1]),
-            //     BL_TO_FORTRAN_3D(uface[2])),
-            // AMREX_D_DECL(BL_TO_FORTRAN_3D(flux[0]),
-            //     BL_TO_FORTRAN_3D(flux[1]),
-            //     BL_TO_FORTRAN_3D(flux[2])),
-            // dx, &dt_lev);
-
-            if (do_reflux) {
-                for (int i = 0; i < BL_SPACEDIM ; i++) {
-                    fluxes[i][mfi].copy<RunOn::Host>(flux[i],mfi.nodaltilebox(i));
-                }
-            }
+            // TODO: Fluxes for reflux
+            // if (do_reflux) {
+            //     for (int i = 0; i < BL_SPACEDIM ; i++) {
+            //         fluxes[i][mfi].copy<RunOn::Host>(flux[i],mfi.nodaltilebox(i));
+            //     }
+            // }
         }
     }
+}
+
+
+void AmrCorePom::ComputeDt()
+{
+    Vector<Real> dt_tmp(finest_level+1);
+
+    for (int lev = 0; lev <= finest_level; ++lev) {
+	    dt_tmp[lev] = EstTimeStep(lev, true);
+    }
+    ParallelDescriptor::ReduceRealMin(&dt_tmp[0], dt_tmp.size());
+
+    constexpr Real change_max = 1.1;
+    Real dt_0 = dt_tmp[0];
+    int n_factor = 1;
+    for (int lev = 0; lev <= finest_level; ++lev) {
+        dt_tmp[lev] = std::min(dt_tmp[lev], change_max*dt[lev]);
+        n_factor *= nsubsteps[lev];
+        dt_0 = std::min(dt_0, n_factor*dt_tmp[lev]);
+    }
+
+    // Limit dts by the value of stop_time.
+    const Real eps = 1.e-3*dt_0;
+    if (t_new[0] + dt_0 > stop_time - eps) {
+	    dt_0 = stop_time - t_new[0];
+    }
+
+    dt[0] = dt_0;
+    for (int lev = 1; lev <= finest_level; ++lev) {
+	    dt[lev] = dt[lev-1] / nsubsteps[lev];
+    }
+}
+
+
+// Compute dt from CFL considerations
+Real AmrCorePom::EstTimeStep(int lev, bool local)
+{
+    BL_PROFILE("AmrCorePom::EstTimeStep()");
+
+    Real dt_est = std::numeric_limits<Real>::max();
+
+    const Real* dx = geom[lev].CellSize();
+    const Real* prob_lo = geom[lev].ProbLo();
+    const Real cur_time = t_new[lev];
+
+    MultiFab& S_new = phi_new[lev];
+
+	for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi)
+	{
+        const amrex::Box& box = mfi.validbox();
+
+        amrex::FArrayBox& fOld = S_new[mfi];
+        amrex::Array4<amrex::Real> const& sOld = fOld.array();
+
+        amrex::ParallelFor(box,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            Hydro::getCellTimestep(
+                sOld,
+                i, j, k,
+                gamma, dx[0], dx[1], cfl, 0.1
+                );
+        });
+	}
+    dt_est = S_new.min(QUANT_DT);
+    // dt_est = std::min(dt_est, outNext - t);
+    if (!local) {
+	    ParallelDescriptor::ReduceRealMin(dt_est);
+    }
+
+    return dt_est;
+}
+
+
+// Get plotfile name
+std::string AmrCorePom::PlotFileName(int lev) const
+{
+    return amrex::Concatenate(plot_file, lev, 5);
+}
+
+
+// Put together an array of multifabs for writing
+Vector<const MultiFab*> AmrCorePom::PlotFileMF() const
+{
+    Vector<const MultiFab*> r;
+    for (int i = 0; i <= finest_level; ++i) {
+	    r.push_back(&phi_new[i]);
+    }
+    return r;
+}
+
+
+// set plotfile variable names
+Vector<std::string> AmrCorePom::PlotFileVarNames() const
+{
+    return {"phi"};
+}
+
+// write plotfile to disk
+void AmrCorePom::WritePlotFile () const
+{
+    const std::string& plotfilename = PlotFileName(istep[0]);
+    const auto& mf = PlotFileMF();
+    const auto& varnames = PlotFileVarNames();
+
+    amrex::Print() << "Writing plotfile " << plotfilename << "\n";
+
+    amrex::WriteMultiLevelPlotfile(
+        plotfilename,
+        finest_level + 1,
+        mf,
+        varnames,
+		Geom(),
+        t_new[0],
+        istep,
+        refRatio()
+    );
+}

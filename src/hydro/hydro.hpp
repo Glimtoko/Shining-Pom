@@ -26,6 +26,13 @@ namespace Hydro {
         double gamma
     );
 
+    void MUSCLHancock2D(
+        amrex::Array4<amrex::Real> const& stateOld,
+        int iIndex, int jIndex, int kIndex, int niGhosts,
+        double gamma, double dt, double dx, double dy,
+        amrex::Array4<amrex::Real> const& stateNew
+    );
+
     void MUSCLHancock2D_Reconstruct(
         amrex::Array4<amrex::Real> const& stateOld,
         int i, int j, int k,

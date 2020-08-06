@@ -116,8 +116,11 @@ private:
         int ncycle
     );
 
-    // Wrapper for EstTimeStep(0
+    // Wrapper for EstTimeStep()
     void ComputeDt ();
+
+    // Timestep calculation
+    Real EstTimeStep (int lev, bool local);
 
     // Compute dt from CFL considerations
     Real EstTimeStep (
@@ -177,11 +180,14 @@ private:
     int problem = 1;
 
     // Maximum number of steps and stop time
-    int max_step = 10000//std::numeric_limits<int>::max();
-    amrex::Real stop_time = 0.25//std::numeric_limits<amrex::Real>::max();
+    int max_step = 10000; //std::numeric_limits<int>::max();
+    amrex::Real stop_time = 0.25; //std::numeric_limits<amrex::Real>::max();
 
     // CFL number - dt = CFL*dx/umax
     amrex::Real cfl = 0.7;
+
+    // Gamma
+    amrex::Real gamma = 1.4;
 
     // How often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
@@ -194,7 +200,7 @@ private:
     std::string plot_file {"plt"};
     int plot_int = -1;
 
-    amrex::Real gamma = 0.0;
-}
+    amrex::Real omega = 0.0;
+};
 
 #endif
