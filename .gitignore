@@ -33,3 +33,7 @@ obj
 *.app
 shiningpom
 bin
+
+# Misc
+*.png
+*.gif

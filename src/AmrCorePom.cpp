@@ -16,7 +16,7 @@ using namespace amrex;
 
 AmrCorePom::AmrCorePom()
 {
-     int nlevs_max = max_level + 1;
+    int nlevs_max = max_level + 1;
 
     // Update istep and nsubsteps
     istep.resize(nlevs_max, 0);
@@ -205,8 +205,8 @@ void AmrCorePom::MakeNewLevelFromScratch(
     const DistributionMapping& dm
 )
 {
-    const int ncomp = 1;
-    const int nghost = 0;
+    const int ncomp = 5;
+    const int nghost = 2;
 
     phi_new[lev].define(ba, dm, ncomp, nghost);
     phi_old[lev].define(ba, dm, ncomp, nghost);
@@ -334,9 +334,11 @@ void AmrCorePom::FillPatch(
         Vector<Real> stime;
         GetData(0, time, smf, stime);
 
-        BndryFuncArray bfunc(phifill);
-        PhysBCFunct<BndryFuncArray> physbc(geom[lev], bcs, bfunc);
+        CpuBndryFuncFab bfunc;
+        PhysBCFunct<CpuBndryFuncFab> physbc(geom[lev], bcs, bfunc);
         
+        amrex::Print() << "A " << smf.size() << std::endl;
+
         amrex::FillPatchSingleLevel(
             mf,
             time,
@@ -355,9 +357,9 @@ void AmrCorePom::FillPatch(
         GetData(lev-1, time, cmf, ctime);
         GetData(lev, time, fmf, ftime);
 
-        BndryFuncArray bfunc(phifill);
-        PhysBCFunct<BndryFuncArray> cphysbc(geom[lev-1],bcs,bfunc);
-        PhysBCFunct<BndryFuncArray> fphysbc(geom[lev  ],bcs,bfunc);
+        CpuBndryFuncFab bfunc;
+        PhysBCFunct<CpuBndryFuncFab> cphysbc(geom[lev-1],bcs,bfunc);
+        PhysBCFunct<CpuBndryFuncFab> fphysbc(geom[lev  ],bcs,bfunc);
 
         Interpolater* mapper = &cell_cons_interp;
 
@@ -396,9 +398,9 @@ void AmrCorePom::FillCoarsePatch (
 	    amrex::Abort("FillCoarsePatch: how did this happen?");
     }
 
-    BndryFuncArray bfunc(phifill);
-    PhysBCFunct<BndryFuncArray> cphysbc(geom[lev-1],bcs,bfunc);
-    PhysBCFunct<BndryFuncArray> fphysbc(geom[lev  ],bcs,bfunc);
+    CpuBndryFuncFab bfunc;
+    PhysBCFunct<CpuBndryFuncFab> cphysbc(geom[lev-1],bcs,bfunc);
+    PhysBCFunct<CpuBndryFuncFab> fphysbc(geom[lev  ],bcs,bfunc);
 
     Interpolater* mapper = &cell_cons_interp;
 
@@ -535,7 +537,6 @@ void AmrCorePom::Advance(
     // State with ghost cells
     MultiFab Sborder(grids[lev], dmap[lev], S_new.nComp(), num_grow);
     FillPatch(lev, time, Sborder, 0, Sborder.nComp());
-
     {
 	    FArrayBox flux[BL_SPACEDIM];
 
@@ -667,7 +668,7 @@ Vector<const MultiFab*> AmrCorePom::PlotFileMF() const
 // set plotfile variable names
 Vector<std::string> AmrCorePom::PlotFileVarNames() const
 {
-    return {"phi"};
+    return {"Rho", "MomU", "MomV", "E", "dt"};
 }
 
 // write plotfile to disk

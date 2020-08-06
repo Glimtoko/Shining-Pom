@@ -197,8 +197,8 @@ private:
     int do_reflux = 0;
 
     // Plotfile prefix and frequency
-    std::string plot_file {"plt"};
-    int plot_int = -1;
+    std::string plot_file {"output/plt"};
+    int plot_int = 10;
 
     amrex::Real omega = 0.0;
 };

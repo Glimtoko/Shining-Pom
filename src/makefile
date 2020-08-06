@@ -1,9 +1,9 @@
 CC = mpic++
-#CFLAGS = -g -Wall -Wextra -ansi -pedantic -fsanitize=address -std=c++17
+CFLAGS = -g -Wall -Wextra -ansi -pedantic -fsanitize=address -std=c++17
 #CFLAGS = -g -std=c++17 -fsanitize=address
-CFLAGS = -O3 -std=c++17
+#CFLAGS = -O3 -std=c++17
 
-OBJECTS = hydro_flux.o hydro_timestep.o hydro_MH2D_Construct.o hydro_update.o initialise.o AmrCorePom.o main.o
+OBJECTS = hydro_flux.o hydro_timestep.o hydro_MH2D_Onestep.o initialise.o AmrCorePom.o main.o
 
 # Expected library locations
 AMREX_DIR := /home/nick/MyLibs/AMReX2D
