@@ -41,6 +41,12 @@ AmrCorePom::AmrCorePom()
     auto yDown = amrex::BCType::reflect_even;
     auto yUp = amrex::BCType::reflect_even;
 
+    if (problem == 3) {
+        xRight = amrex::BCType::reflect_even;
+        yDown = amrex::BCType::reflect_even;
+        yUp = amrex::BCType::reflect_even;
+    }
+
     // X boundaries
     bcs[QUANT_RHO].setLo(0, amrex::BCType::reflect_even);
     bcs[QUANT_RHO].setHi(0, amrex::BCType::reflect_even);
@@ -50,6 +56,8 @@ AmrCorePom::AmrCorePom()
     bcs[QUANT_MOMV].setHi(0, xRight);
     bcs[QUANT_E].setLo(0, amrex::BCType::reflect_even);
     bcs[QUANT_E].setHi(0, amrex::BCType::reflect_even);
+    bcs[QUANT_DT].setLo(0, amrex::BCType::reflect_even);
+    bcs[QUANT_DT].setHi(0, amrex::BCType::reflect_even);
 
     // Y boundaries
     bcs[QUANT_RHO].setLo(1, amrex::BCType::reflect_even);
@@ -60,6 +68,8 @@ AmrCorePom::AmrCorePom()
     bcs[QUANT_MOMV].setHi(1, yUp);
     bcs[QUANT_E].setLo(1, amrex::BCType::reflect_even);
     bcs[QUANT_E].setHi(1, amrex::BCType::reflect_even);
+    bcs[QUANT_DT].setLo(1, amrex::BCType::reflect_even);
+    bcs[QUANT_DT].setHi(1, amrex::BCType::reflect_even);
 
     // stores fluxes at coarse-fine interface for synchronization
     // this will be sized "nlevs_max+1"
@@ -233,7 +243,17 @@ void AmrCorePom::MakeNewLevelFromScratch(
         amrex::FArrayBox& fab = state[mfi];
         amrex::Array4<amrex::Real> const& a = fab.array();
 
-        setGeometrySodX(box, a, geom[lev], 1.4);
+        switch(problem) {
+            case 1:
+                setGeometrySodX(box, a, geom[lev], 1.4);
+                break;
+            case 2:
+                setGeometrySodY(box, a, geom[lev], 1.4);
+                break;
+            case 3:
+                setGeometryTriple(box, a, geom[lev], 1.4);
+                break;
+        }
     }
 }
 
@@ -248,7 +268,9 @@ void AmrCorePom::ErrorEst(
     int ngrow
 )
 {
-    static Vector<Real> e_refine {2.5, 2.7, 3.0, 3.5};
+    static Vector<Real> e_refine {1.0, 2.2, 2.3, 3.5};
+    static Vector<Real> u_refine {0.1, 0.15, 0.2, 3.5};
+    static Vector<Real> r_refine {0.8, 1.0};
 
     if (lev >= e_refine.size()) return;
 
@@ -279,7 +301,7 @@ void AmrCorePom::ErrorEst(
         for (int k = lo.z; k <= hi.z; ++k) {
             for (int j = lo.y; j <= hi.y; ++j) {
                 for (int i = lo.x; i <= hi.x; ++i) {
-                    if (a(i, j, k, QUANT_E) > e_refine[lev]) {
+                    if (a(i, j, k, QUANT_MOMU) > u_refine[lev]) {
                         itags[idx] = 1;
                         idx++;
                     }
@@ -337,8 +359,6 @@ void AmrCorePom::FillPatch(
         CpuBndryFuncFab bfunc;
         PhysBCFunct<CpuBndryFuncFab> physbc(geom[lev], bcs, bfunc);
         
-        amrex::Print() << "A " << smf.size() << std::endl;
-
         amrex::FillPatchSingleLevel(
             mf,
             time,
@@ -638,7 +658,7 @@ Real AmrCorePom::EstTimeStep(int lev, bool local)
         });
 	}
     dt_est = S_new.min(QUANT_DT);
-    // dt_est = std::min(dt_est, outNext - t);
+
     if (!local) {
 	    ParallelDescriptor::ReduceRealMin(dt_est);
     }

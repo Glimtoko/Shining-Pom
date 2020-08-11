@@ -6,10 +6,13 @@
 
 #include "AmrCorePom.hpp"
 
+#include <fenv.h>
+
 using namespace amrex;
 
 int main(int argc, char* argv[])
 {
+    // feenableexcept(FE_INVALID | FE_OVERFLOW | FE_DIVBYZERO);
     amrex::Initialize(argc,argv);
 
     // wallclock time

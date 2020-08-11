@@ -177,11 +177,11 @@ private:
     // ==================
 
     // Problem ID
-    int problem = 1;
+    int problem = 3;
 
     // Maximum number of steps and stop time
     int max_step = 10000; //std::numeric_limits<int>::max();
-    amrex::Real stop_time = 0.25; //std::numeric_limits<amrex::Real>::max();
+    amrex::Real stop_time = 40; //std::numeric_limits<amrex::Real>::max();
 
     // CFL number - dt = CFL*dx/umax
     amrex::Real cfl = 0.7;
