@@ -1,8 +1,0 @@
-nsteps    = 50000                # Max timesteps
-ncells    = 900 360             # X, Y
-xrange    = 0.0 40.0
-yrange    = 0.0 10.0
-title     = "Sod"
-problem   = 4                   # Problem number
-tend      = 80
-dtOut      = 0.5
