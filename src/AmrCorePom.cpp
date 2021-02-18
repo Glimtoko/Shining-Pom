@@ -18,6 +18,9 @@ using namespace amrex;
 
 AmrCorePom::AmrCorePom()
 {
+    // Read problem input
+    Read_Inputs();
+
     int nlevs_max = max_level + 1;
 
     // Update istep and nsubsteps
@@ -42,11 +45,6 @@ AmrCorePom::AmrCorePom()
     auto xRight = amrex::BCType::reflect_even;
     auto yDown = amrex::BCType::reflect_even;
     auto yUp = amrex::BCType::reflect_even;
-
-    Read_Inputs();
-    // ParmParse pp("pom");
-    // pp.query("problem", problem);
-    // amrex::Print() << "Problem: " << problem << std::endl;
 
     if (problem == 3) {
         xRight = amrex::BCType::reflect_even;
