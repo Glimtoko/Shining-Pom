@@ -11,11 +11,11 @@ geometry.is_periodic =  0 0 0
 geometry.coord_sys   =  0       # 0 => cart
 geometry.prob_lo     =  0.0  0.0
 geometry.prob_hi     =  1.0  1.0
-amr.n_cell           =  100  100
+amr.n_cell           =  100  12
 
 
 # VERBOSITY
-amr.v              = 1       # verbosity in Amr
+amr.v              = 0       # verbosity in Amr. 1 -> Include FINE step prints
 
 
 # REFINEMENT

@@ -141,7 +141,7 @@ private:
     amrex::Vector<const amrex::MultiFab*> PlotFileMF() const;
 
     // Set plotfile variables names
-    amrex::Vector<std::string> PlotFileVarNames() const;
+    // amrex::Vector<std::string> PlotFileVarNames() const;
 
     // Write plotfile to disk
     void WritePlotFile() const;
@@ -155,6 +155,9 @@ private:
 
     // Private data members
     // ====================
+
+    amrex::Vector<std::string> variables {"Rho", "MomU", "MomV", "E", "dt"};
+    int nghost {2};
 
     amrex::Vector<int> istep;      // Which step?
     amrex::Vector<int> nsubsteps;  // How many substeps on each level?

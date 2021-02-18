@@ -150,7 +150,8 @@ void AmrCorePom::Evolve()
     int last_chkpt_file_step = 0;
 
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step) {
-        amrex::Print() << "\nCoarse STEP " << step+1 << " starts ..." << std::endl;
+        if (Verbose())
+            amrex::Print() << "\nCoarse STEP " << step+1 << " starts ..." << std::endl;
 
         ComputeDt();
 
@@ -291,8 +292,7 @@ void AmrCorePom::MakeNewLevelFromScratch(
     const DistributionMapping& dm
 )
 {
-    const int ncomp = 5;
-    const int nghost = 2;
+    const int ncomp = variables.size();
 
     phi_new[lev].define(ba, dm, ncomp, nghost);
     phi_old[lev].define(ba, dm, ncomp, nghost);
@@ -756,19 +756,11 @@ Vector<const MultiFab*> AmrCorePom::PlotFileMF() const
     return r;
 }
 
-
-// set plotfile variable names
-Vector<std::string> AmrCorePom::PlotFileVarNames() const
-{
-    return {"Rho", "MomU", "MomV", "E", "dt"};
-}
-
 // write plotfile to disk
 void AmrCorePom::WritePlotFile () const
 {
     const std::string& plotfilename = PlotFileName(istep[0]);
     const auto& mf = PlotFileMF();
-    const auto& varnames = PlotFileVarNames();
 
     amrex::Print() 
         << "Writing plotfile " 
@@ -781,7 +773,7 @@ void AmrCorePom::WritePlotFile () const
         plotfilename,
         finest_level + 1,
         mf,
-        varnames,
+        variables,
 		Geom(),
         t_new[0],
         istep,
@@ -953,8 +945,7 @@ void AmrCorePom::ReadCheckpointFile ()
         SetDistributionMap(lev, dm);
 
         // build MultiFab and FluxRegister data
-        const int ncomp = 5;
-        const int nghost = 2;
+        const int ncomp = variables.size();
         phi_old[lev].define(grids[lev], dmap[lev], ncomp, nghost);
         phi_new[lev].define(grids[lev], dmap[lev], ncomp, nghost);
 
