@@ -146,6 +146,12 @@ private:
     // Write plotfile to disk
     void WritePlotFile() const;
 
+    // Write checkpoint file
+    void WriteCheckpointFile () const;
+
+    // Restart from checkpoint file
+    void ReadCheckpointFile ();
+
 
     // Private data members
     // ====================
@@ -192,6 +198,11 @@ private:
     // Gamma
     amrex::Real gamma = 1.4;
 
+    // Refinement criteria
+    amrex::Vector<amrex::Real> e_refine {1.0, 2.2, 2.3, 3.5};
+    amrex::Vector<amrex::Real> u_refine {0.1, 0.15, 0.2, 3.5};
+    amrex::Vector<amrex::Real> r_refine {0.8, 1.0};
+
     // How often each level regrids the higher levels of refinement
     // (after a level advances that many time steps)
     int regrid_int = 2;
@@ -202,6 +213,12 @@ private:
     // Plotfile prefix and frequency
     std::string plot_file {"output/plt"};
     int plot_int = 10;
+
+    // Checkpoint prefex and frequency
+    std::string chk_file {"output/chkpt"};
+    int chk_int = 25;
+
+    std::string restart_chkfile {""};
 
     amrex::Real omega = 0.0;
 };

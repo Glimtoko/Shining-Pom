@@ -1,8 +1,9 @@
-# Problem setup
+# PROBLEM DESCRIPTION
 pom.problem = 1
 pom.max_step  = 1000000
 pom.end_time = 0.25
 pom.cfl = 0.7     
+pom.do_reflux = 0
 
 
 # PROBLEM SIZE & GEOMETRY
@@ -10,30 +11,33 @@ geometry.is_periodic =  0 0 0
 geometry.coord_sys   =  0       # 0 => cart
 geometry.prob_lo     =  0.0  0.0
 geometry.prob_hi     =  1.0  1.0
-amr.n_cell           =  100   100
+amr.n_cell           =  100  100
+
 
 # VERBOSITY
 amr.v              = 1       # verbosity in Amr
+
 
 # REFINEMENT
 amr.max_level       = 1       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.blocking_factor = 4       # block factor in grid generation
 amr.max_grid_size   = 16
-
 amr.regrid_int      = 2       # how often to regrid
 
-# TIME STEP CONTROL
-adv.do_reflux = 0
 
-# Tagging
-adv.phierr = 1.01  1.1  1.5
+# REFINEMENT CRITERIA
+amr.e_refine = 1.0 2.2 2.3 3.5
+amr.u_refine = 0.1 0.15 0.2 3.5
+amr.r_refine = 0.9 1.0
+
 
 # PLOTFILES
 amr.plot_file  = output/plot    # root name of plot file
 amr.plot_int   = 10     # number of timesteps between plot files
 
+
 # CHECKPOINT
 amr.chk_file = chk      # root name of checkpoint file
-amr.chk_int  = 10       # number of timesteps between checkpoint files
+amr.chk_int  = 25       # number of timesteps between checkpoint files
 #amr.restart  = chk00060 # restart from this checkpoint file
