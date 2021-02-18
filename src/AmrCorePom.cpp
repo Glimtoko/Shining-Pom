@@ -41,6 +41,11 @@ AmrCorePom::AmrCorePom()
     auto yDown = amrex::BCType::reflect_even;
     auto yUp = amrex::BCType::reflect_even;
 
+    Read_Inputs();
+    // ParmParse pp("pom");
+    // pp.query("problem", problem);
+    // amrex::Print() << "Problem: " << problem << std::endl;
+
     if (problem == 3) {
         xRight = amrex::BCType::reflect_even;
         yDown = amrex::BCType::reflect_even;
@@ -84,6 +89,23 @@ AmrCorePom::AmrCorePom()
 AmrCorePom::~AmrCorePom()
 {
 }
+
+void AmrCorePom::Read_Inputs()
+{
+    ParmParse pp_pom("pom");
+    pp_pom.query("problem", problem);
+    pp_pom.query("end_time", stop_time);
+    pp_pom.query("max_step", max_step);
+    pp_pom.query("cfl", cfl);
+
+    ParmParse pp_amr("amr");
+    pp_amr.query("plot_int", plot_int);
+    pp_amr.query("plot_file", plot_file);
+
+
+    amrex::Print() << "Problem: " << problem << std::endl;
+}
+
 
 // Advance solution to final time
 void AmrCorePom::Evolve()
@@ -698,9 +720,14 @@ void AmrCorePom::WritePlotFile () const
     const auto& mf = PlotFileMF();
     const auto& varnames = PlotFileVarNames();
 
-    amrex::Print() << "Writing plotfile " << plotfilename << "\n";
+    amrex::Print() 
+        << "Writing plotfile " 
+        << plotfilename 
+        << " at (course) step " << istep[0]
+        << ", time = " << t_new[0] << "s"
+        << std::endl;
 
-    amrex::WriteMultiLevelPlotfile(
+    amrex::WriteMultiLevelPlotfileHDF5(
         plotfilename,
         finest_level + 1,
         mf,

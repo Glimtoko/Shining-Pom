@@ -17,6 +17,9 @@ public:
     // Advance solution to final time
     void Evolve();
 
+    // User Input
+    void Read_Inputs();
+
     // Initialise data
     void InitData();
 
