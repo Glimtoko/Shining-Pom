@@ -1,3 +1,5 @@
+#include <filesystem>
+
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_ParmParse.H>
 #include <AMReX_MultiFabUtil.H>
@@ -92,6 +94,7 @@ AmrCorePom::~AmrCorePom()
 
 void AmrCorePom::Read_Inputs()
 {
+    // Core problem definition
     {
         ParmParse pp("pom");
         pp.query("problem", problem);
@@ -101,21 +104,38 @@ void AmrCorePom::Read_Inputs()
         pp.query("do_reflux", do_reflux);
     }
 
+    // AMR setup - note a lot of the AMR input is read automatically
+    // by AMReX
     {
         ParmParse pp("amr");
         pp.query("regrid_int", regrid_int);
-
-        pp.query("plot_file", plot_file);
-        pp.query("plot_int", plot_int);
-
-        pp.query("chk_int", chk_int);
-        pp.query("chk_file", chk_file);
-        pp.query("restart", restart_chkfile);
 
         pp.queryarr("e_refine", e_refine);
         pp.queryarr("r_refine", r_refine);
         pp.queryarr("u_refine", u_refine);
         
+    }
+
+    // Output
+    {
+        ParmParse pp("output");
+        pp.query("plot_int", plot_int);
+        pp.query("plot_file", plot_file);
+
+        pp.query("chk_int", chk_int);
+        pp.query("chk_file", chk_file);
+        pp.query("restart", restart_chkfile);
+
+        std::string subdir {""};
+        pp.query("subdir", subdir);
+        if (subdir != "") {
+            if (ParallelDescriptor::IOProcessor()) {
+                std::filesystem::create_directory(subdir);
+            }
+
+            plot_file = subdir + "/" + plot_file;
+            chk_file = subdir + "/" + chk_file;
+        }
     }
 
 
@@ -935,8 +955,8 @@ void AmrCorePom::ReadCheckpointFile ()
         SetDistributionMap(lev, dm);
 
         // build MultiFab and FluxRegister data
-        int ncomp = 1;
-        int nghost = 0;
+        const int ncomp = 5;
+        const int nghost = 2;
         phi_old[lev].define(grids[lev], dmap[lev], ncomp, nghost);
         phi_new[lev].define(grids[lev], dmap[lev], ncomp, nghost);
 

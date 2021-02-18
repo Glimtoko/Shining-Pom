@@ -33,11 +33,12 @@ amr.r_refine = 0.9 1.0
 
 
 # PLOTFILES
-amr.plot_file  = output/plot    # root name of plot file
-amr.plot_int   = 10     # number of timesteps between plot files
+output.subdir = output
+output.plot_file  = plot    # root name of plot file
+output.plot_int   = 10     # number of timesteps between plot files
 
 
 # CHECKPOINT
-amr.chk_file = chk      # root name of checkpoint file
-amr.chk_int  = 25       # number of timesteps between checkpoint files
-#amr.restart  = chk00060 # restart from this checkpoint file
+output.chk_file = chk      # root name of checkpoint file
+output.chk_int  = 25       # number of timesteps between checkpoint files
+#output.restart  = chk00060 # restart from this checkpoint file
