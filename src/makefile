@@ -6,10 +6,10 @@ CFLAGS = -O3 -std=c++17
 OBJECTS = hydro_flux.o hydro_timestep.o hydro_MH2D_Onestep.o initialise.o AmrCorePom.o main.o
 
 # Expected library locations
-AMREX_DIR := /home/nick/MyLibs/AMReX2D
+AMREX_DIR := /prod/AMReX2D
 
-INC = -I$(AMREX_DIR)/include -pthread
-LIB = -L$(AMREX_DIR)/lib -lamrex -pthread
+INC = -I$(AMREX_DIR)/include -pthread -fopenmp
+LIB = -L$(AMREX_DIR)/lib -lamrex -pthread -fopenmp
 
 VPATH=.:./hydro:./mesh
 
@@ -18,7 +18,7 @@ BL_NO_FORT=TRUE
 .PHONY: clean
 
 shiningpom: $(OBJECTS)
-	$(CC) $(CFLAGS) *.o -o shiningpom -lm $(LIB)
+	$(CC) $(CFLAGS) *.o -o shiningpom -lm $(LIB) -lgfortran
 
 clean:
 	-rm *.o
