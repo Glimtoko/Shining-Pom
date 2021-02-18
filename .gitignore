@@ -32,6 +32,7 @@ obj
 *.out
 *.app
 shiningpom
+BUILD
 bin
 
 # Misc
