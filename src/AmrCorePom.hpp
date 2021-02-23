@@ -5,6 +5,8 @@
 #include <AMReX_FluxRegister.H>
 #include <AMReX_BCRec.H>
 
+#include "rapidjson/document.h"
+
 using namespace amrex;
 
 class AmrCorePom: public amrex::AmrCore
@@ -19,6 +21,14 @@ public:
 
     // User Input
     void Read_Inputs();
+
+    // Read and interpret a boundary condition
+    amrex::BCType::mathematicalBndryTypes GetBoundary(
+        rapidjson::Document &mesh, 
+        std::string axis, 
+        std::string variable,
+        int idx
+    );
 
     // Initialise data
     void InitData();

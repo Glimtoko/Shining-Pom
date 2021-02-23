@@ -1,7 +1,7 @@
 # PROBLEM DESCRIPTION
 pom.problem = 1
 pom.max_step  = 1000000
-pom.end_time = 0.25
+pom.end_time = 0.01    # 0.25
 pom.cfl = 0.7     
 pom.do_reflux = 0
 
@@ -12,6 +12,8 @@ geometry.coord_sys   =  0       # 0 => cart
 geometry.prob_lo     =  0.0  0.0
 geometry.prob_hi     =  1.0  1.0
 amr.n_cell           =  100  12
+
+mesh.file = /home/nick/programming/git/Shining-Pom/examples/sod.json
 
 
 # VERBOSITY

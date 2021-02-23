@@ -12,8 +12,11 @@ add_subdirectory(src)
 
 #AMReX
 find_package(AMReX REQUIRED 2D)
+find_package(RapidJSON REQUIRED)
 find_package(ZLIB REQUIRED)
 target_link_libraries(shiningpom AMReX::amrex AMReX::Flags_CXX)
 target_link_libraries(shiningpom ZLIB::ZLIB)
+
+target_include_directories(shiningpom PRIVATE ${RapidJSON_INCLUDE_DIRS})
 
 set(CMAKE_CXX_FLAGS_DEBUG  "-O0 -g -fsanitize=address")

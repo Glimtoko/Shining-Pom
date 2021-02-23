@@ -1,0 +1,33 @@
+{
+    "boundaries": {
+        "X" : {
+            "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "U" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "V" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
+        },
+
+        "Y" : {
+            "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "U" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "V" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
+        }
+    },
+
+    "mesh": {
+        "materials": {
+            "background": [1.0, 1.0, 0.0],
+            "low": [0.125, 0.1, 0.0]
+        },
+        "domain": {
+            "BL": [0.0, 0.0],
+            "TR": [1.0, 1.0]
+        },
+        "entries":[
+            ["CIRCLE", 10.0, 3.0, 2.0, "low"]
+        ]
+    }
+}

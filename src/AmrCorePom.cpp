@@ -1,4 +1,8 @@
 #include <filesystem>
+#include <string>
+#include <fstream>
+#include <streambuf>
+#include <iostream>
 
 #include <AMReX_ParallelDescriptor.H>
 #include <AMReX_ParmParse.H>
@@ -7,6 +11,8 @@
 #include <AMReX_PlotFileUtil.H>
 #include <AMReX_VisMF.H>
 #include <AMReX_PhysBCFunct.H>
+
+#include "rapidjson/document.h"
 
 #include "AmrCorePom.hpp"
 #include "initialise.hpp"
@@ -20,6 +26,43 @@ AmrCorePom::AmrCorePom()
 {
     // Read problem input
     Read_Inputs();
+
+    // Read mesh file and communicate contents
+    std::string meshJSONFile;
+    char *meshJSON;
+    int JSONlen;
+    if (ParallelDescriptor::IOProcessor()) {
+        ParmParse pp("mesh");
+        pp.query("file", meshJSONFile);
+
+        std::ifstream t(meshJSONFile);
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+        std::string meshJSONStr = buffer.str();
+
+        std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+
+        JSONlen = meshJSONStr.size();
+        const char *meshJSONConst = meshJSONStr.c_str();
+
+        meshJSON = new char[JSONlen];
+
+        if (ParallelDescriptor::IOProcessor()) {
+            strcpy(meshJSON, meshJSONConst);
+        }
+    }
+
+    ParallelDescriptor::Bcast<int>(&JSONlen, 1);
+    std::cout << JSONlen << std::endl;
+    if (!ParallelDescriptor::IOProcessor()) {
+        meshJSON = new char[JSONlen];
+    }
+    ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
+
+    rapidjson::Document mesh;
+    mesh.Parse(meshJSON);
+
 
     int nlevs_max = max_level + 1;
 
@@ -40,41 +83,31 @@ AmrCorePom::AmrCorePom()
     phi_old.resize(nlevs_max);
     bcs.resize(5);
 
-    // TODO: This should come from problem spec
-    auto xLeft = amrex::BCType::reflect_even;
-    auto xRight = amrex::BCType::reflect_even;
-    auto yDown = amrex::BCType::reflect_even;
-    auto yUp = amrex::BCType::reflect_even;
-
-    if (problem == 3) {
-        xRight = amrex::BCType::reflect_even;
-        yDown = amrex::BCType::reflect_even;
-        yUp = amrex::BCType::reflect_even;
-    }
+    // Boundary order: L, R, U, D
 
     // X boundaries
-    bcs[QUANT_RHO].setLo(0, amrex::BCType::reflect_even);
-    bcs[QUANT_RHO].setHi(0, amrex::BCType::reflect_even);
-    bcs[QUANT_MOMU].setLo(0, xLeft);
-    bcs[QUANT_MOMU].setHi(0, xRight);
-    bcs[QUANT_MOMV].setLo(0, xLeft);
-    bcs[QUANT_MOMV].setHi(0, xRight);
-    bcs[QUANT_E].setLo(0, amrex::BCType::reflect_even);
-    bcs[QUANT_E].setHi(0, amrex::BCType::reflect_even);
-    bcs[QUANT_DT].setLo(0, amrex::BCType::reflect_even);
-    bcs[QUANT_DT].setHi(0, amrex::BCType::reflect_even);
+    bcs[QUANT_RHO].setLo(0, GetBoundary(mesh, "x", "rho", 0));
+    bcs[QUANT_RHO].setHi(0, GetBoundary(mesh, "x", "rho", 1));
+    bcs[QUANT_MOMU].setLo(0, GetBoundary(mesh, "x", "u", 0));
+    bcs[QUANT_MOMU].setHi(0, GetBoundary(mesh, "x", "u", 1));
+    bcs[QUANT_MOMV].setLo(0, GetBoundary(mesh, "x", "v", 0));
+    bcs[QUANT_MOMV].setHi(0, GetBoundary(mesh, "x", "v", 1));
+    bcs[QUANT_E].setLo(0, GetBoundary(mesh, "x", "e", 0));
+    bcs[QUANT_E].setHi(0, GetBoundary(mesh, "x", "e", 1));
+    bcs[QUANT_DT].setLo(0, GetBoundary(mesh, "x", "dt", 0));
+    bcs[QUANT_DT].setHi(0, GetBoundary(mesh, "x", "dt", 1));
 
     // Y boundaries
-    bcs[QUANT_RHO].setLo(1, amrex::BCType::reflect_even);
-    bcs[QUANT_RHO].setHi(1, amrex::BCType::reflect_even);
-    bcs[QUANT_MOMU].setLo(1, yDown);
-    bcs[QUANT_MOMU].setHi(1, yUp);
-    bcs[QUANT_MOMV].setLo(1, yDown);
-    bcs[QUANT_MOMV].setHi(1, yUp);
-    bcs[QUANT_E].setLo(1, amrex::BCType::reflect_even);
-    bcs[QUANT_E].setHi(1, amrex::BCType::reflect_even);
-    bcs[QUANT_DT].setLo(1, amrex::BCType::reflect_even);
-    bcs[QUANT_DT].setHi(1, amrex::BCType::reflect_even);
+    bcs[QUANT_RHO].setLo(1, GetBoundary(mesh, "y", "rho", 3));
+    bcs[QUANT_RHO].setHi(1, GetBoundary(mesh, "y", "rho", 2));
+    bcs[QUANT_MOMU].setLo(1, GetBoundary(mesh, "y", "u", 3));
+    bcs[QUANT_MOMU].setHi(1, GetBoundary(mesh, "y", "u", 2));
+    bcs[QUANT_MOMV].setLo(1, GetBoundary(mesh, "y", "v", 3));
+    bcs[QUANT_MOMV].setHi(1, GetBoundary(mesh, "y", "v", 2));
+    bcs[QUANT_E].setLo(1, GetBoundary(mesh, "y", "e", 3));
+    bcs[QUANT_E].setHi(1, GetBoundary(mesh, "y", "e", 2));
+    bcs[QUANT_DT].setLo(1, GetBoundary(mesh, "y", "dt", 3));
+    bcs[QUANT_DT].setHi(1, GetBoundary(mesh, "y", "dt", 2));
 
     // stores fluxes at coarse-fine interface for synchronization
     // this will be sized "nlevs_max+1"
@@ -89,6 +122,45 @@ AmrCorePom::AmrCorePom()
 AmrCorePom::~AmrCorePom()
 {
 }
+
+amrex::BCType::mathematicalBndryTypes AmrCorePom::GetBoundary(
+    rapidjson::Document &mesh, 
+    std::string axis, 
+    std::string variable,
+    int idx
+)
+{
+    if (mesh.HasMember("boundaries")) {
+        if(mesh["boundaries"].HasMember(axis.c_str())) {
+            rapidjson::Value &b =  mesh["boundaries"][axis.c_str()];
+            if (b.HasMember(variable.c_str())) {
+                rapidjson::Value &bc = b[variable.c_str()];
+                std::string boundary{bc[idx].GetString()};
+                if (boundary == "reflect_even")
+                    return amrex::BCType::reflect_even;
+
+                else if (boundary == "reflect_odd")
+                    return amrex::BCType::reflect_odd;
+
+                else if (boundary == "int_dir")
+                    return amrex::BCType::int_dir;
+
+                else if (boundary == "ext_dir")
+                    return amrex::BCType::ext_dir;
+
+                else if (boundary == "foextrap")
+                    return amrex::BCType::foextrap;
+
+                else return amrex::BCType::bogus;
+
+            }
+            return amrex::BCType::bogus;
+        }
+        return amrex::BCType::bogus;
+    }
+    return amrex::BCType::bogus;
+}
+
 
 void AmrCorePom::Read_Inputs()
 {
