@@ -187,4 +187,12 @@ void boundnull(Real* data, AMREX_ARLIM_P(lo), AMREX_ARLIM_P(hi),
               const Real* dx, const Real* grd_lo,
               const Real* time, const int* bc);
 }
+
+void pomBoundary(
+    Box const& bx, FArrayBox& data,
+    const int dcomp, const int numcomp,
+    Geometry const& geom, const Real time,
+    const Vector<BCRec>& bcr, const int bcomp,
+    const int scomp);
+
 #endif

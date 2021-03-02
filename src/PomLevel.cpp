@@ -38,6 +38,7 @@ PomLevel::PomLevel(amrex::Amr& papa,
     AmrLevel(papa, lev, level_geom, bl, dm, time)
 {
     // Read_Inputs();
+    verbose = true;
 
     flux_register = 0;
     if (level > 0 && do_reflux)
@@ -104,20 +105,14 @@ void PomLevel::init()
 
 
     Real dt = parent->dtLevel(level);
-
-
     Real cur_time  = getLevel(level-1).state[Phi_Type].curTime();
-
-
     Real prev_time = getLevel(level-1).state[Phi_Type].prevTime();
 
     Real dt_old = (cur_time - prev_time)/(Real)parent->MaxRefRatio(level-1);
 
-    setTimeLevel(cur_time,dt_old,dt);
+    setTimeLevel(cur_time, dt_old, dt);
     MultiFab& S_new = get_new_data(Phi_Type);
     FillCoarsePatch(S_new, 0, cur_time, Phi_Type, 0, NUM_STATE);
-
-    // Print() << "Out\n";
 }
 
 // Advance grids at this level in time.
@@ -132,14 +127,9 @@ PomLevel::advance (amrex::Real time,
         state[k].swapTimeLevels(dt);
     }
 
+
     MultiFab& S_new = get_new_data(Phi_Type);
-
-    // const Real prev_time = state[Phi_Type].prevTime();
-    // const Real cur_time = state[Phi_Type].curTime();
-    // const Real ctr_time = 0.5*(prev_time + cur_time);
-
     const Real* dx = geom.CellSize();
-    // const Real* prob_lo = geom.ProbLo();
 
     // Get pointers to Flux registers, or set pointer to zero if not there.
     FluxRegister *fine    = 0;
@@ -168,13 +158,12 @@ PomLevel::advance (amrex::Real time,
     // State with ghost cells
     MultiFab Sborder(grids, dmap, NUM_STATE, NUM_GROW);
     FillPatch(*this, Sborder, NUM_GROW, time, Phi_Type, 0, NUM_STATE);
-
 #ifdef AMREX_USE_OMP
 #pragma omp parallel
 #endif
 
     {
-	FArrayBox flux[BL_SPACEDIM], uface[BL_SPACEDIM];
+	FArrayBox flux[BL_SPACEDIM];
 
 	for (MFIter mfi(S_new, true); mfi.isValid(); ++mfi)
 	{
@@ -183,36 +172,28 @@ PomLevel::advance (amrex::Real time,
 	    FArrayBox& statein = Sborder[mfi];
 	    FArrayBox& stateout = S_new[mfi];
 
-	    // Allocate fabs for fluxes and Godunov velocities.
-	    for (int i = 0; i < BL_SPACEDIM ; i++) {
-        //   const Box& bx = mfi.tilebox();
+        // Allocate fabs for fluxes and MUSCL-Hancock construction.
+        for (int i = 0; i < BL_SPACEDIM ; i++) {
+            const Box& bxtmp = amrex::surroundingNodes(bx,i);
+            flux[i].resize(bxtmp, S_new.nComp());
+        }
 
-        //     FArrayBox& statein = Sborder[mfi];
-        //     FArrayBox& stateout = S_new[mfi];
+        // MUSCL-Hancock/Godunov update
+        amrex::Array4<amrex::Real> const& sOld = statein.array();
+        amrex::Array4<amrex::Real> const& sNew = stateout.array();
+        amrex::ParallelFor(bx,
+        [=] AMREX_GPU_DEVICE (int i, int j, int k)
+        {
+            Hydro::MUSCLHancock2D(
+                sOld, i, j, k, 0,
+                eos_gamma, dt, dx[0], dx[1],
+                sNew
+            );
+        });
 
-            // Allocate fabs for fluxes and MUSCL-Hancock construction.
-            for (int i = 0; i < BL_SPACEDIM ; i++) {
-                const Box& bxtmp = amrex::surroundingNodes(bx,i);
-                flux[i].resize(bxtmp, S_new.nComp());
-            }
-
-            // MUSCL-Hancock/Godunov update
-            amrex::Array4<amrex::Real> const& sOld = statein.array();
-            amrex::Array4<amrex::Real> const& sNew = stateout.array();
-            amrex::ParallelFor(bx,
-            [=] AMREX_GPU_DEVICE (int i, int j, int k)
-            {
-                Hydro::MUSCLHancock2D(
-                    sOld, i, j, k, 0,
-                    eos_gamma, dt, dx[0], dx[1],
-                    sNew
-                );
-            });
-
-            if (do_reflux) {
-                // for (int i = 0; i < BL_SPACEDIM ; i++)
-                //     fluxes[i][mfi].copy<RunOn::Host>(flux[i],mfi.nodaltilebox(i));
-            }
+        if (do_reflux) {
+            for (int i = 0; i < BL_SPACEDIM ; i++)
+                fluxes[i][mfi].copy<RunOn::Host>(flux[i],mfi.nodaltilebox(i));
         }
 	}
     }
@@ -240,29 +221,37 @@ PomLevel::variableSetUp ()
     // Get options, set phys_bc - This needs to be moved...
     // Read_Inputs();
 
-    desc_lst.addDescriptor(Phi_Type,IndexType::TheCellType(),
-                           StateDescriptor::Point,0,NUM_STATE,
-               &cell_cons_interp);
+    desc_lst.addDescriptor(
+        Phi_Type,
+        IndexType::TheCellType(),
+        StateDescriptor::Point,
+        NUM_GROW,
+        NUM_STATE,
+        &cell_cons_interp
+    );
 
     // This needs to be updated
     // ------------------------------------------------------------
     int lo_bc[BL_SPACEDIM];
     int hi_bc[BL_SPACEDIM];
     for (int i = 0; i < BL_SPACEDIM; ++i) {
-    lo_bc[i] = hi_bc[i] = REFLECT_EVEN;   // reflective boundaries
+        lo_bc[i] = hi_bc[i] = BCType::reflect_even;   // reflective boundaries
     }
 
-    BCRec bc(lo_bc, hi_bc);
+    // BCRec bc(lo_bc, hi_bc);
     // ------------------------------------------------------------
-
-    // CpuBndryFuncFab bfunc;
-    // PhysBCFunct<CpuBndryFuncFab> physbc(geom, bc, bfunc);
 
     amrex::Vector<std::string> variables {"Rho", "MomU", "MomV", "E", "dt"};
 
     for (int j=0; j<NUM_STATE; j++) {
-        desc_lst.setComponent(Phi_Type, j, variables[j], bc,
-                StateDescriptor::BndryFunc(boundnull));
+        BCRec bc(lo_bc, hi_bc);
+        desc_lst.setComponent(
+            Phi_Type, 
+            j, 
+            variables[j], 
+            bc,
+            StateDescriptor::BndryFunc(pomBoundary)
+        );
     }
 }
 
@@ -597,12 +586,54 @@ void AMREX_ATTRIBUTE_WEAK amrex_probinit (const int* init,
                      const amrex_real* probhi)
 {
 }
-
-void boundnull(Real* data, AMREX_ARLIM_P(lo), AMREX_ARLIM_P(hi),
-              const int* dom_lo, const int* dom_hi,
-              const Real* dx, const Real* grd_lo,
-              const Real* time, const int* bc)
-{
 }
+
+void pomBoundary(
+    Box const& bx, FArrayBox& data,
+    const int dcomp, const int numcomp,
+    Geometry const& geom, const Real time,
+    const Vector<BCRec>& bcr, const int bcomp,
+    const int scomp)
+{
+    /*
+        AMRLevel doesn't apply boundary conditions, so hard code them here
+    */
+
+    const Box& domain = geom.Domain();
+
+    Array4<Real> const& a = data.array();
+    Dim3 lo = lbound(a);
+    Dim3 hi = ubound(a);
+   
+    if (lo.x == -2) {
+        for (int j = lo.y; j <= hi.y; ++j) {
+            a(-2, j, 0, dcomp) = a(1, j, 0, dcomp);
+            a(-1, j, 0, dcomp) = a(0, j, 0, dcomp);
+        }
+    }
+
+    if (hi.x > domain.bigEnd(0)) {
+        int idx = domain.bigEnd(0);
+        for (int j = lo.y; j <= hi.y; ++j) {
+            a(idx+1, j, 0, dcomp) = a(idx, j, 0, dcomp);
+            a(idx+2, j, 0, dcomp) = a(idx-1, j, 0, dcomp);
+        }
+    }
+
+    if (lo.y == -2) {
+        for (int i = lo.x; i <= hi.x; ++i) {
+            a(i, -2, 0, dcomp) = a(i, 1, 0, dcomp);
+            a(i, -1, 0, dcomp) = a(i, 0, 0, dcomp);
+        }
+    }
+
+    if (hi.y > domain.bigEnd(1)) {
+        int idx = domain.bigEnd(1);
+        for (int i = lo.x; i <= hi.x; ++i) {
+            a(i, idx+1, 0, dcomp) = a(i, idx, 0, dcomp);
+            a(i, idx+2, 0, dcomp) = a(i, idx-1, 0, dcomp);
+        }
+    }
+
 
 }

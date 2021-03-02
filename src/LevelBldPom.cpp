@@ -11,12 +11,14 @@ class LevelBldPom
     virtual void variableSetUp () override;
     virtual void variableCleanUp () override;
     virtual AmrLevel *operator() () override;
-    virtual AmrLevel *operator() (Amr&            papa,
-                                  int             lev,
-                                  const Geometry& level_geom,
-                                  const BoxArray& ba,
-				  const DistributionMapping& dm,
-                                  Real            time) override;
+    virtual AmrLevel *operator() (
+        Amr&            papa,
+        int             lev,
+        const Geometry& level_geom,
+        const BoxArray& ba,
+        const DistributionMapping& dm,
+        Real            time
+    ) override;
 };
 
 LevelBldPom Pom_bld;
@@ -46,12 +48,14 @@ LevelBldPom::operator() ()
 }
 
 AmrLevel*
-LevelBldPom::operator() (Amr&            papa,
-	   	         int             lev,
-                         const Geometry& level_geom,
-                         const BoxArray& ba,
-                         const DistributionMapping& dm,
-                         Real            time)
+LevelBldPom::operator() (
+    Amr&            papa,
+    int             lev,
+    const Geometry& level_geom,
+    const BoxArray& ba,
+    const DistributionMapping& dm,
+    Real            time
+)
 {
     return new PomLevel(papa, lev, level_geom, ba, dm, time);
 }

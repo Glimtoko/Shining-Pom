@@ -259,8 +259,6 @@ void Hydro::MUSCLHancock2D(
         vY2, uY2, rhoY2, pY2,
         gamma);
 
-    // std::cout << vY3 << " " << uY3 << " " << rhoY3 << " " << pY3 << std::endl;
-    // std::cout << vY4 << " " << uY4 << " " << rhoY4 << " " << pY4 << std::endl;
     fluxU = Hydro::getFluxHLLC(
         vY3, uY3, rhoY3, pY3,
         vY4, uY4, rhoY4, pY4,
@@ -274,13 +272,17 @@ void Hydro::MUSCLHancock2D(
     GETNEW(MOMV, iIndex, jIndex) = GETOLD(MOMV, iIndex, jIndex) + fx*(fluxL.momV - fluxR.momV) + fy*(fluxD.momU - fluxU.momU);
     GETNEW(ENERGY, iIndex, jIndex) = GETOLD(ENERGY, iIndex, jIndex) + fx*(fluxL.E - fluxR.E) + fy*(fluxD.E - fluxU.E);
     GETNEW(DT, iIndex, jIndex) = 0.0;
-
-    // std::cout << GETNEW(ENERGY, iIndex, jIndex) << " " << iIndex << " " << jIndex << std::endl;
 }
 
 double getSlopeX(amrex::Array4<amrex::Real> stateOld, int U, int i, int j, int niGhosts, double omega) {
     double di1 = GETOLD(U, i, j) - GETOLD(U, i-1, j);
     double di2 = GETOLD(U, i+1, j) - GETOLD(U, i, j);
+
+    // std::cout
+    //     << i << " " << j << " "
+    //     << GETOLD(U, i, j) << " " << GETOLD(U, i-1, j) << " "
+    //     << GETOLD(U, i+1, j) << " " << GETOLD(U, 7, 7) << " " << GETOLD(U, 0, 0)
+    //     << std::endl;
 
     double diU = 0.5*(1.0 + omega)*di1 + 0.5*(1.0 - omega)*di2;
 

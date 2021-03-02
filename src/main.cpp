@@ -15,7 +15,7 @@ using namespace amrex;
 
 int main(int argc, char* argv[])
 {
-    // feenableexcept(FE_INVALID | FE_OVERFLOW | FE_DIVBYZERO);
+    feenableexcept(FE_INVALID | FE_OVERFLOW | FE_DIVBYZERO);
     amrex::Initialize(argc,argv);
 
     Print() << "Starting\n";
@@ -23,9 +23,9 @@ int main(int argc, char* argv[])
     // wallclock time
     auto dRunTime1 = amrex::second();
 
-    int  max_step;
+    int  max_step = -1;
     Real strt_time = 0.0;
-    Real stop_time;
+    Real stop_time = -1.0;
 
     ParmParse pp("pom");
     pp.query("end_time", stop_time);
@@ -67,4 +67,6 @@ int main(int argc, char* argv[])
     amrex::Print() << "Run time = " << dRunTime2 << std::endl;
 
     amrex::Finalize();
+
+    std::cout << "Done\n";
 }
