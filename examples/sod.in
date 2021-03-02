@@ -17,7 +17,7 @@ mesh.file = /home/nick/programming/git/Shining-Pom/examples/sod.json
 
 
 # VERBOSITY
-amr.v              = 0       # verbosity in Amr. 1 -> Include FINE step prints
+amr.v              = 1       # verbosity in Amr. 1 -> Include FINE step prints
 
 
 # REFINEMENT
@@ -41,6 +41,8 @@ output.plot_int   = 10     # number of timesteps between plot files
 
 
 # CHECKPOINT
-output.chk_file = chk      # root name of checkpoint file
-output.chk_int  = 25       # number of timesteps between checkpoint files
+#output.chk_file = chk      # root name of checkpoint file
+#output.chk_int  = 25       # number of timesteps between checkpoint files
 #output.restart  = chk00060 # restart from this checkpoint file
+
+amrex.signal_handling=1

@@ -708,7 +708,7 @@ void AmrCorePom::Advance(
             const Box& bx = mfi.tilebox();
 
             FArrayBox& statein = Sborder[mfi];
-            FArrayBox& stateout      =   S_new[mfi];
+            FArrayBox& stateout = S_new[mfi];
 
             // Allocate fabs for fluxes and MUSCL-Hancock construction.
             for (int i = 0; i < BL_SPACEDIM ; i++) {

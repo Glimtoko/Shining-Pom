@@ -1,6 +1,7 @@
 #include "AMReX.H"
 #include "AMReX_Geometry.H"
 #include "AMReX_FabArray.H"
+#include <AMReX_ArrayLim.H>
 
 #include "shiningpom.hpp"
 

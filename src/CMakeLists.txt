@@ -4,6 +4,7 @@ target_sources(shiningpom PRIVATE
     hydro/hydro_timestep.cpp 
     hydro/hydro_MH2D_Onestep.cpp 
     initialise.cpp 
-    AmrCorePom.cpp 
+    PomLevel.cpp 
+    LevelBldPom.cpp
     main.cpp
 )

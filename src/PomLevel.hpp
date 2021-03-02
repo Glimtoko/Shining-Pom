@@ -2,6 +2,7 @@
 #define _PomLevel_H_
 
 #include <AMReX_AmrLevel.H>
+#include <AMReX_ArrayLim.H>
 #include <AMReX_FluxRegister.H>
 
 enum StateType {
@@ -9,8 +10,11 @@ enum StateType {
     NUM_STATE_TYPE
 };
 
+using namespace amrex;
+
 class PomLevel: public amrex::AmrLevel
 {
+public:
     // Default constructor.  Builds invalid object.
     PomLevel();
 
@@ -25,6 +29,9 @@ class PomLevel: public amrex::AmrLevel
     // The destructor.
     virtual ~PomLevel() override;
 
+    // Read input parameters
+    void Read_Inputs();
+
     // Data at problem start-up
     virtual void initData () override;
 
@@ -34,11 +41,23 @@ class PomLevel: public amrex::AmrLevel
     // Initialize data on this level after regridding if old level did not previously exist
     virtual void init () override;
 
+    // Define data descriptors.
+    static void variableSetUp ();
+
+    // Cleanup data descriptors at end of run.
+    static void variableCleanUp ();
+
     // Advance grids at this level in time.
     virtual amrex::Real advance (amrex::Real time,
                                  amrex::Real dt,
                                  int iteration,
                                  int ncycle) override;
+
+    // Estimate timestep on a level
+    amrex::Real estTimeStep (amrex::Real dt_old);
+
+    // Compute initial time step.
+    amrex::Real initialTimeStep ();
 
     // Compute initial `dt'.
     virtual void computeInitialDt (int finest_level,
@@ -67,6 +86,9 @@ class PomLevel: public amrex::AmrLevel
     // Do work after init().
     virtual void post_init (amrex::Real stop_time) override;
 
+    // Do work after restart()
+    virtual void post_restart () override;
+
     // Error estimation for regridding.
     virtual void errorEst (amrex::TagBoxArray& tb,
                            int clearval,
@@ -85,14 +107,63 @@ protected:
     amrex::FluxRegister& getFluxRegister();
     amrex::FluxRegister& getFluxRegister(int level);
 
+    // Other utility functions
+    void reflux ();
+    void avgDown ();
+    void avgDown (int state_indx);
+
     // The data.
     amrex::FluxRegister* flux_register;
 
     // Static data members.
-    static int verbose;
-    static amrex::Real cfl;
-    static int do_reflux;
-}
+
+// private:
+
+    amrex::Vector<std::string> variables {"Rho", "MomU", "MomV", "E", "dt"};
+
+    amrex::Real max_dt_change = 1.1;
+
+    // Runtime parameters
+    // ==================
+
+    // Problem ID
+    int problem = 3;
+
+    // Maximum number of steps and stop time
+    int max_step = 10000; //std::numeric_limits<int>::max();
+    amrex::Real stop_time = 40; //std::numeric_limits<amrex::Real>::max();
+
+    // CFL number - dt = CFL*dx/umax
+    amrex::Real cfl = 0.7;
+
+    // Gamma
+    amrex::Real eos_gamma = 1.4;
+
+    // Refinement criteria
+    amrex::Vector<amrex::Real> e_refine {1.0, 2.2, 2.3, 3.5};
+    amrex::Vector<amrex::Real> u_refine {0.1, 0.15, 0.2, 3.5};
+    amrex::Vector<amrex::Real> r_refine {0.8, 1.0};
+
+    // How often each level regrids the higher levels of refinement
+    // (after a level advances that many time steps)
+    int regrid_int = 2;
+
+    // Hyperbolic refluxing as part of multilevel synchronization
+    int do_reflux = 0;
+
+    int verbose = 0;
+
+    // Plotfile prefix and frequency
+    std::string plot_file {"output/plt"};
+    int plot_int = 10;
+
+    // Checkpoint prefex and frequency
+    std::string chk_file {"output/chkpt"};
+    int chk_int = 25;
+
+    std::string restart_chkfile {""};
+
+};
 
 inline PomLevel& PomLevel::getLevel(int level)
 {
@@ -107,7 +178,13 @@ inline amrex::FluxRegister& PomLevel::getFluxRegister()
 
 inline amrex::FluxRegister& PomLevel::getFluxRegister(int level)
 {
-    return getLevel(level).getFluxReg();
+    return getLevel(level).getFluxRegister();
 }
 
+extern "C" {
+void boundnull(Real* data, AMREX_ARLIM_P(lo), AMREX_ARLIM_P(hi),
+              const int* dom_lo, const int* dom_hi,
+              const Real* dx, const Real* grd_lo,
+              const Real* time, const int* bc);
+}
 #endif
