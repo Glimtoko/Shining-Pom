@@ -11,7 +11,7 @@ add_executable(shiningpom "")
 add_subdirectory(src)
 
 #AMReX
-find_package(AMReX REQUIRED 2D)
+find_package(AMReX REQUIRED 2D HINTS /prod/AMReX2D_CMAKE)
 find_package(RapidJSON REQUIRED)
 find_package(ZLIB REQUIRED)
 target_link_libraries(shiningpom AMReX::amrex AMReX::Flags_CXX)

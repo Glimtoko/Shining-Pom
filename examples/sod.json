@@ -3,16 +3,16 @@
         "X" : {
             "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
             "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
-            "U" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
-            "V" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMU" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMV" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
             "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
         },
 
         "Y" : {
             "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
             "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
-            "U" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
-            "V" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMU" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMV" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
             "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
         }
     },
@@ -24,8 +24,9 @@
         },
         "domain": {
             "BL": [0.0, 0.0],
-            "TR": [1.0, 1.0]
+            "TR": [40.0, 10.0]
         },
+        "cells": [200, 50],
         "entries":[
             ["CIRCLE", 10.0, 3.0, 2.0, "low"]
         ]

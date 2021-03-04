@@ -22,7 +22,12 @@
 
 using namespace amrex; 
 
-AmrCorePom::AmrCorePom()
+AmrCorePom::AmrCorePom(
+    Geometry const& level_0_gome, 
+    Vector<BCRec> bcs_in,
+    AmrInfo const& amr_info
+)
+: AmrCore(level_0_gome, amr_info)
 {
     // Read problem input
     Read_Inputs();
@@ -43,7 +48,7 @@ AmrCorePom::AmrCorePom()
         std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
             [](unsigned char c){ return std::tolower(c); });
 
-        JSONlen = meshJSONStr.size();
+        JSONlen = meshJSONStr.size() + 1;
         const char *meshJSONConst = meshJSONStr.c_str();
 
         meshJSON = new char[JSONlen];
@@ -54,7 +59,6 @@ AmrCorePom::AmrCorePom()
     }
 
     ParallelDescriptor::Bcast<int>(&JSONlen, 1);
-    std::cout << JSONlen << std::endl;
     if (!ParallelDescriptor::IOProcessor()) {
         meshJSON = new char[JSONlen];
     }
@@ -81,39 +85,8 @@ AmrCorePom::AmrCorePom()
     // Update data and BC arrays
     phi_new.resize(nlevs_max);
     phi_old.resize(nlevs_max);
-    bcs.resize(5);
+    bcs = bcs_in;
 
-    // Boundary order: L, R, U, D
-
-    // X boundaries
-    bcs[QUANT_RHO].setLo(0, GetBoundary(mesh, "x", "rho", 0));
-    bcs[QUANT_RHO].setHi(0, GetBoundary(mesh, "x", "rho", 1));
-    bcs[QUANT_MOMU].setLo(0, GetBoundary(mesh, "x", "u", 0));
-    bcs[QUANT_MOMU].setHi(0, GetBoundary(mesh, "x", "u", 1));
-    bcs[QUANT_MOMV].setLo(0, GetBoundary(mesh, "x", "v", 0));
-    bcs[QUANT_MOMV].setHi(0, GetBoundary(mesh, "x", "v", 1));
-    bcs[QUANT_E].setLo(0, GetBoundary(mesh, "x", "e", 0));
-    bcs[QUANT_E].setHi(0, GetBoundary(mesh, "x", "e", 1));
-    bcs[QUANT_DT].setLo(0, GetBoundary(mesh, "x", "dt", 0));
-    bcs[QUANT_DT].setHi(0, GetBoundary(mesh, "x", "dt", 1));
-
-    // Y boundaries
-    bcs[QUANT_RHO].setLo(1, GetBoundary(mesh, "y", "rho", 3));
-    bcs[QUANT_RHO].setHi(1, GetBoundary(mesh, "y", "rho", 2));
-    bcs[QUANT_MOMU].setLo(1, GetBoundary(mesh, "y", "u", 3));
-    bcs[QUANT_MOMU].setHi(1, GetBoundary(mesh, "y", "u", 2));
-    bcs[QUANT_MOMV].setLo(1, GetBoundary(mesh, "y", "v", 3));
-    bcs[QUANT_MOMV].setHi(1, GetBoundary(mesh, "y", "v", 2));
-    bcs[QUANT_E].setLo(1, GetBoundary(mesh, "y", "e", 3));
-    bcs[QUANT_E].setHi(1, GetBoundary(mesh, "y", "e", 2));
-    bcs[QUANT_DT].setLo(1, GetBoundary(mesh, "y", "dt", 3));
-    bcs[QUANT_DT].setHi(1, GetBoundary(mesh, "y", "dt", 2));
-
-    // stores fluxes at coarse-fine interface for synchronization
-    // this will be sized "nlevs_max+1"
-    // NOTE: the flux register associated with flux_reg[lev] is associated
-    // with the lev/lev-1 interface (and has grid spacing associated with lev-1)
-    // therefore flux_reg[0] is never actually used in the reflux operation
     flux_reg.resize(nlevs_max+1);
 }
 
@@ -378,9 +351,9 @@ void AmrCorePom::MakeNewLevelFromScratch(
         );
     }
 
-    const Real* dx = geom[lev].CellSize();
-    const Real* prob_lo = geom[lev].ProbLo();
-    Real cur_time = t_new[lev];
+    // const Real* dx = geom[lev].CellSize();
+    // const Real* prob_lo = geom[lev].ProbLo();
+    // Real cur_time = t_new[lev];
 
     MultiFab& state = phi_new[lev];
 
@@ -418,11 +391,11 @@ void AmrCorePom::ErrorEst(
 {
     if (lev >= e_refine.size()) return;
 
-    const int clearval = TagBox::CLEAR;
-    const int tagval = TagBox::SET;
+    // const int clearval = TagBox::CLEAR;
+    // const int tagval = TagBox::SET;
 
-    const Real* dx      = geom[lev].CellSize();
-    const Real* prob_lo = geom[lev].ProbLo();
+    // const Real* dx      = geom[lev].CellSize();
+    // const Real* prob_lo = geom[lev].ProbLo();
 
     MultiFab& state = phi_new[lev];
 
@@ -445,9 +418,10 @@ void AmrCorePom::ErrorEst(
         for (int k = lo.z; k <= hi.z; ++k) {
             for (int j = lo.y; j <= hi.y; ++j) {
                 for (int i = lo.x; i <= hi.x; ++i) {
-                    if (a(i, j, k, QUANT_MOMU) > u_refine[lev]) {
-                        itags[idx] = 1;
-                        idx++;
+                    if (a(i, j, k, QUANT_RHO) > r_refine[lev]) {
+                        itags[idx++] = 1;
+                    } else {
+                        itags[idx++] = 0;
                     }
                 }
             }
@@ -681,12 +655,12 @@ void AmrCorePom::Advance(
 
     MultiFab& S_new = phi_new[lev];
 
-    const Real old_time = t_old[lev];
-    const Real new_time = t_new[lev];
-    const Real ctr_time = 0.5*(old_time+new_time);
+    // const Real old_time = t_old[lev];
+    // const Real new_time = t_new[lev];
+    // const Real ctr_time = 0.5*(old_time+new_time);
 
     const Real* dx = geom[lev].CellSize();
-    const Real* prob_lo = geom[lev].ProbLo();
+    // const Real* prob_lo = geom[lev].ProbLo();
 
     // Storage for fluxes
     MultiFab fluxes[BL_SPACEDIM];
@@ -779,8 +753,8 @@ Real AmrCorePom::EstTimeStep(int lev, bool local)
     Real dt_est = std::numeric_limits<Real>::max();
 
     const Real* dx = geom[lev].CellSize();
-    const Real* prob_lo = geom[lev].ProbLo();
-    const Real cur_time = t_new[lev];
+    // const Real* prob_lo = geom[lev].ProbLo();
+    // const Real cur_time = t_new[lev];
 
     MultiFab& S_new = phi_new[lev];
 

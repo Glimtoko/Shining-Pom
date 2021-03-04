@@ -13,7 +13,11 @@ class AmrCorePom: public amrex::AmrCore
 {
 public:
     // Constructor and destructor
-    AmrCorePom();
+    AmrCorePom(
+        Geometry const& level_0_gome, 
+        Vector<BCRec> bcs,
+        AmrInfo const& amr_info
+    );
     virtual ~AmrCorePom();
 
     // Advance solution to final time
