@@ -32,40 +32,40 @@ AmrCorePom::AmrCorePom(
     // Read problem input
     Read_Inputs();
 
-    // Read mesh file and communicate contents
-    std::string meshJSONFile;
-    char *meshJSON;
-    int JSONlen;
-    if (ParallelDescriptor::IOProcessor()) {
-        ParmParse pp("mesh");
-        pp.query("file", meshJSONFile);
+    // // Read mesh file and communicate contents
+    // std::string meshJSONFile;
+    // char *meshJSON;
+    // int JSONlen;
+    // if (ParallelDescriptor::IOProcessor()) {
+    //     ParmParse pp("mesh");
+    //     pp.query("file", meshJSONFile);
 
-        std::ifstream t(meshJSONFile);
-        std::stringstream buffer;
-        buffer << t.rdbuf();
-        std::string meshJSONStr = buffer.str();
+    //     std::ifstream t(meshJSONFile);
+    //     std::stringstream buffer;
+    //     buffer << t.rdbuf();
+    //     std::string meshJSONStr = buffer.str();
 
-        std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
-            [](unsigned char c){ return std::tolower(c); });
+    //     std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
+    //         [](unsigned char c){ return std::tolower(c); });
 
-        JSONlen = meshJSONStr.size() + 1;
-        const char *meshJSONConst = meshJSONStr.c_str();
+    //     JSONlen = meshJSONStr.size() + 1;
+    //     const char *meshJSONConst = meshJSONStr.c_str();
 
-        meshJSON = new char[JSONlen];
+    //     meshJSON = new char[JSONlen];
 
-        if (ParallelDescriptor::IOProcessor()) {
-            strcpy(meshJSON, meshJSONConst);
-        }
-    }
+    //     if (ParallelDescriptor::IOProcessor()) {
+    //         strcpy(meshJSON, meshJSONConst);
+    //     }
+    // }
 
-    ParallelDescriptor::Bcast<int>(&JSONlen, 1);
-    if (!ParallelDescriptor::IOProcessor()) {
-        meshJSON = new char[JSONlen];
-    }
-    ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
+    // ParallelDescriptor::Bcast<int>(&JSONlen, 1);
+    // if (!ParallelDescriptor::IOProcessor()) {
+    //     meshJSON = new char[JSONlen];
+    // }
+    // ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
 
-    rapidjson::Document mesh;
-    mesh.Parse(meshJSON);
+    // rapidjson::Document mesh;
+    // mesh.Parse(meshJSON);
 
 
     int nlevs_max = max_level + 1;
@@ -94,44 +94,6 @@ AmrCorePom::AmrCorePom(
 // Destructor - do nothing
 AmrCorePom::~AmrCorePom()
 {
-}
-
-amrex::BCType::mathematicalBndryTypes AmrCorePom::GetBoundary(
-    rapidjson::Document &mesh, 
-    std::string axis, 
-    std::string variable,
-    int idx
-)
-{
-    if (mesh.HasMember("boundaries")) {
-        if(mesh["boundaries"].HasMember(axis.c_str())) {
-            rapidjson::Value &b =  mesh["boundaries"][axis.c_str()];
-            if (b.HasMember(variable.c_str())) {
-                rapidjson::Value &bc = b[variable.c_str()];
-                std::string boundary{bc[idx].GetString()};
-                if (boundary == "reflect_even")
-                    return amrex::BCType::reflect_even;
-
-                else if (boundary == "reflect_odd")
-                    return amrex::BCType::reflect_odd;
-
-                else if (boundary == "int_dir")
-                    return amrex::BCType::int_dir;
-
-                else if (boundary == "ext_dir")
-                    return amrex::BCType::ext_dir;
-
-                else if (boundary == "foextrap")
-                    return amrex::BCType::foextrap;
-
-                else return amrex::BCType::bogus;
-
-            }
-            return amrex::BCType::bogus;
-        }
-        return amrex::BCType::bogus;
-    }
-    return amrex::BCType::bogus;
 }
 
 
@@ -337,6 +299,7 @@ void AmrCorePom::MakeNewLevelFromScratch(
     const DistributionMapping& dm
 )
 {
+    
     const int ncomp = variables.size();
 
     phi_new[lev].define(ba, dm, ncomp, nghost);
@@ -351,9 +314,6 @@ void AmrCorePom::MakeNewLevelFromScratch(
         );
     }
 
-    // const Real* dx = geom[lev].CellSize();
-    // const Real* prob_lo = geom[lev].ProbLo();
-    // Real cur_time = t_new[lev];
 
     MultiFab& state = phi_new[lev];
 
@@ -374,6 +334,176 @@ void AmrCorePom::MakeNewLevelFromScratch(
             case 3:
                 setGeometryTriple(box, a, geom[lev], 1.4);
                 break;
+            case 4:
+                SetGeometry(box, a, geom[lev], 1.4);
+        }
+    }
+}
+
+void AmrCorePom::SetGeometry(    
+    amrex::Box const& bx,
+    amrex::Array4<amrex::Real> const& a,
+    amrex::Geometry const& geom,
+    double gamma
+)
+{
+    // Read mesh file and communicate contents
+    std::string meshJSONFile;
+    char *meshJSON;
+    int JSONlen;
+    if (ParallelDescriptor::IOProcessor()) {
+        ParmParse pp("mesh");
+        pp.query("file", meshJSONFile);
+
+        std::ifstream t(meshJSONFile);
+        std::stringstream buffer;
+        buffer << t.rdbuf();
+        std::string meshJSONStr = buffer.str();
+
+        std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
+            [](unsigned char c){ return std::tolower(c); });
+
+        JSONlen = meshJSONStr.size() + 1;
+        const char *meshJSONConst = meshJSONStr.c_str();
+
+        meshJSON = new char[JSONlen];
+
+        if (ParallelDescriptor::IOProcessor()) {
+            strcpy(meshJSON, meshJSONConst);
+        }
+    }
+
+    ParallelDescriptor::Bcast<int>(&JSONlen, 1);
+    if (!ParallelDescriptor::IOProcessor()) {
+        meshJSON = new char[JSONlen];
+    }
+    ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
+
+    rapidjson::Document mesh;
+    mesh.Parse(meshJSON);
+
+    // Basic geometry parameters
+    amrex::GpuArray<amrex::Real,AMREX_SPACEDIM> dx = geom.CellSizeArray();
+    const auto lo = lbound(bx);
+    const auto hi = ubound(bx);
+
+    const auto x0 = geom.ProbLo(0) + dx[0]/2.0;
+    const auto y0 = geom.ProbLo(1) + dx[1]/2.0;
+
+    // Get materials
+    amrex::Vector<amrex::Real> background {1.0, 1.0};
+    std::map<std::string, amrex::Vector<amrex::Real>> materials;
+    if (mesh.HasMember("mesh")) {
+        rapidjson::Value &mesh_container = mesh["mesh"];
+
+        if (mesh_container.HasMember("materials")) {
+            rapidjson::Value &mats = mesh_container["materials"];
+            if (mats.HasMember("background")) {
+                rapidjson::Value &data = mats["background"];
+                background[0] = data[0].GetFloat();
+                background[1] = data[1].GetFloat();
+            }
+
+            for (
+                rapidjson::Value::ConstMemberIterator itr = mats.MemberBegin(); 
+                itr != mats.MemberEnd(); 
+                ++itr
+            )
+            {
+                amrex::Vector<amrex::Real> m {1.0, 1.0};
+                m[0] = itr->value[0].GetFloat();
+                m[1] = itr->value[1].GetFloat();
+                materials.insert(
+                    std::pair<std::string, amrex::Vector<amrex::Real>>(
+                        itr->name.GetString(),
+                        m
+                    )
+                );
+            }
+        }
+    }
+
+    // Set global background
+    double e = background[1]/(gamma -1.0);
+    for (int k = lo.z; k <= hi.z; ++k) {
+        for (int j = lo.y; j <= hi.y; ++j) {
+            for (int i = lo.x; i <= hi.x; ++i) {
+                a(i, j, k, QUANT_RHO) = background[0];
+                a(i, j, k, QUANT_MOMV) = 0.0;
+                a(i, j, k, QUANT_MOMU) = 0.0;
+                a(i, j, k, QUANT_E) = e;
+                a(i, j, k, QUANT_DT) = 100.0;
+            }
+        }
+    }
+
+    // Add entities
+    if (mesh.HasMember("mesh")) {
+        rapidjson::Value &mesh_container = mesh["mesh"];
+        if (mesh_container.HasMember("entities")) {
+            rapidjson::Value &entities = mesh_container["entities"];
+            for (
+                rapidjson::SizeType idx = 0; idx < entities.Size(); idx++
+            )
+            {
+                const rapidjson::Value& itr = entities[idx];
+                std::string entity = itr[0].GetString();
+                if (entity == "circle")
+                {
+                    Real x = itr[1].GetFloat();
+                    Real y = itr[2].GetFloat();
+                    Real r = itr[3].GetFloat();
+                    amrex::Vector<amrex::Real> m = materials.at(itr[4].GetString());
+
+                    double e = m[1]/(gamma -1.0);
+                    for (int k = lo.z; k <= hi.z; ++k) {
+                        for (int j = lo.y; j <= hi.y; ++j) {
+                            for (int i = lo.x; i <= hi.x; ++i) {
+                                auto xp = x0 + dx[0]*i;
+                                auto yp = y0 + dx[1]*j;
+                                double pos = sqrt(pow(yp - y, 2) + pow(xp - x, 2));
+
+                                if (pos <= r)
+                                {
+                                    a(i, j, k, QUANT_RHO) = m[0];
+                                    a(i, j, k, QUANT_MOMV) = 0.0;
+                                    a(i, j, k, QUANT_MOMU) = 0.0;
+                                    a(i, j, k, QUANT_E) = e;
+                                    a(i, j, k, QUANT_DT) = 100.0;
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (entity == "box")
+                {
+                    Real bl_x = itr[1].GetFloat();
+                    Real bl_y = itr[2].GetFloat();
+                    Real tr_x = itr[3].GetFloat();
+                    Real tr_y = itr[4].GetFloat();
+                    amrex::Vector<amrex::Real> m = materials.at(itr[5].GetString());
+
+                    double e = m[1]/(gamma -1.0);
+                    for (int k = lo.z; k <= hi.z; ++k) {
+                        for (int j = lo.y; j <= hi.y; ++j) {
+                            for (int i = lo.x; i <= hi.x; ++i) {
+                                auto xp = x0 + dx[0]*i;
+                                auto yp = y0 + dx[1]*j;
+                                
+
+                                if (xp >= bl_x && yp >= bl_y && xp <= tr_x && yp <= tr_y)
+                                {
+                                    a(i, j, k, QUANT_RHO) = m[0];
+                                    a(i, j, k, QUANT_MOMV) = 0.0;
+                                    a(i, j, k, QUANT_MOMU) = 0.0;
+                                    a(i, j, k, QUANT_E) = e;
+                                    a(i, j, k, QUANT_DT) = 100.0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

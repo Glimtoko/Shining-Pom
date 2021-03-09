@@ -14,7 +14,8 @@ using namespace amrex;
 
 int main(int argc, char* argv[])
 {
-    // feenableexcept(FE_INVALID | FE_OVERFLOW | FE_DIVBYZERO);
+    // feenableexcept(FE_INVALID | FE_OVERFLOW | FE_DIVBYZERO | FE_UNDERFLOW);
+    // feenableexcept(FE_ALL_EXCEPT);
     amrex::Initialize(argc,argv);
 
     // wallclock time

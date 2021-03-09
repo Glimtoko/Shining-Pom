@@ -108,6 +108,7 @@ void Hydro::MUSCLHancock2D(
                   - 0.5*rhoL[i]*vL*vL
         );
 
+        // std::cout << rhoR[i] << " " << uR << " " << vR << std::endl;
         double pR = (gamma - 1.0)*(
             ER[i] - 0.5*rhoR[i]*uR*uR
                   - 0.5*rhoR[i]*vR*vR
@@ -274,6 +275,13 @@ void Hydro::MUSCLHancock2D(
     GETNEW(MOMV, iIndex, jIndex) = GETOLD(MOMV, iIndex, jIndex) + fx*(fluxL.momV - fluxR.momV) + fy*(fluxD.momU - fluxU.momU);
     GETNEW(ENERGY, iIndex, jIndex) = GETOLD(ENERGY, iIndex, jIndex) + fx*(fluxL.E - fluxR.E) + fy*(fluxD.E - fluxU.E);
     GETNEW(DT, iIndex, jIndex) = 0.0;
+
+    // Apply cutoffs...
+    if (std::fabs(GETNEW(MOMV, iIndex, jIndex)) < 1.0e-10)
+        GETNEW(MOMV, iIndex, jIndex) = 0.0;
+
+    if (std::fabs(GETNEW(MOMU, iIndex, jIndex)) < 1.0e-10)
+        GETNEW(MOMU, iIndex, jIndex) = 0.0;
 
     // std::cout << GETNEW(ENERGY, iIndex, jIndex) << " " << iIndex << " " << jIndex << std::endl;
 }

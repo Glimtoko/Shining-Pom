@@ -373,7 +373,5 @@ pom::PomMesh pom::GetPomMesh(char *meshJSON, amrex::Vector<std::string> variable
     Geometry geom(domain, real_box, coord, is_periodic);
     pmesh.geom = geom;
 
-
-
     return pmesh;
 }

@@ -26,14 +26,6 @@ public:
     // User Input
     void Read_Inputs();
 
-    // Read and interpret a boundary condition
-    amrex::BCType::mathematicalBndryTypes GetBoundary(
-        rapidjson::Document &mesh, 
-        std::string axis, 
-        std::string variable,
-        int idx
-    );
-
     // Initialise data
     void InitData();
 
@@ -70,6 +62,13 @@ public:
         const amrex::BoxArray& ba,
         const amrex::DistributionMapping& dm
     ) override;
+
+    void SetGeometry(    
+        amrex::Box const& bx,
+        amrex::Array4<amrex::Real> const& a,
+        amrex::Geometry const& geom,
+        double gamma
+    );
 
     // tag all cells for refinement
     // overrides the pure virtual function in AmrCore
