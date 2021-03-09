@@ -466,10 +466,7 @@ void AmrCorePom::SetGeometry(
                                 if (pos <= r)
                                 {
                                     a(i, j, k, QUANT_RHO) = m[0];
-                                    a(i, j, k, QUANT_MOMV) = 0.0;
-                                    a(i, j, k, QUANT_MOMU) = 0.0;
                                     a(i, j, k, QUANT_E) = e;
-                                    a(i, j, k, QUANT_DT) = 100.0;
                                 }
                             }
                         }
@@ -494,10 +491,75 @@ void AmrCorePom::SetGeometry(
                                 if (xp >= bl_x && yp >= bl_y && xp <= tr_x && yp <= tr_y)
                                 {
                                     a(i, j, k, QUANT_RHO) = m[0];
-                                    a(i, j, k, QUANT_MOMV) = 0.0;
-                                    a(i, j, k, QUANT_MOMU) = 0.0;
                                     a(i, j, k, QUANT_E) = e;
-                                    a(i, j, k, QUANT_DT) = 100.0;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Add momenta
+    if (mesh.HasMember("mesh")) {
+        rapidjson::Value &mesh_container = mesh["mesh"];
+        if (mesh_container.HasMember("momenta")) {
+            rapidjson::Value &momenta = mesh_container["momenta"];
+            for (
+                rapidjson::SizeType idx = 0; idx < momenta.Size(); idx++
+            )
+            {
+                const rapidjson::Value& itr = momenta[idx];
+                std::string entity = itr[0].GetString();
+                if (entity == "circle")
+                {
+                    Real x = itr[1].GetFloat();
+                    Real y = itr[2].GetFloat();
+                    Real r = itr[3].GetFloat();
+                    Real u = itr[4].GetFloat();
+                    Real v = itr[5].GetFloat();
+
+                    for (int k = lo.z; k <= hi.z; ++k) {
+                        for (int j = lo.y; j <= hi.y; ++j) {
+                            for (int i = lo.x; i <= hi.x; ++i) {
+                                auto xp = x0 + dx[0]*i;
+                                auto yp = y0 + dx[1]*j;
+                                double pos = sqrt(pow(yp - y, 2) + pow(xp - x, 2));
+
+                                if (pos <= r)
+                                {
+                                    Real rho = a(i, j, k, QUANT_RHO);
+                                    a(i, j, k, QUANT_MOMV) = v*rho;
+                                    a(i, j, k, QUANT_MOMU) = u*rho;
+                                    a(i, j, k, QUANT_E) += 0.5*rho*(u*u + v*v);
+                                }
+                            }
+                        }
+                    }
+                }
+                else if (entity == "box")
+                {
+                    Real bl_x = itr[1].GetFloat();
+                    Real bl_y = itr[2].GetFloat();
+                    Real tr_x = itr[3].GetFloat();
+                    Real tr_y = itr[4].GetFloat();
+                    Real u = itr[5].GetFloat();
+                    Real v = itr[6].GetFloat();
+
+                    for (int k = lo.z; k <= hi.z; ++k) {
+                        for (int j = lo.y; j <= hi.y; ++j) {
+                            for (int i = lo.x; i <= hi.x; ++i) {
+                                auto xp = x0 + dx[0]*i;
+                                auto yp = y0 + dx[1]*j;
+                                
+
+                                if (xp >= bl_x && yp >= bl_y && xp <= tr_x && yp <= tr_y)
+                                {
+                                    Real rho = a(i, j, k, QUANT_RHO);
+                                    a(i, j, k, QUANT_MOMV) = v*rho;
+                                    a(i, j, k, QUANT_MOMU) = u*rho;
+                                    a(i, j, k, QUANT_E) += 0.5*rho*(u*u + v*v);
                                 }
                             }
                         }
