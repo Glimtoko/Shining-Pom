@@ -33,6 +33,7 @@ obj
 *.app
 shiningpom
 BUILD
+VSC_BUILD
 bin
 
 # Misc

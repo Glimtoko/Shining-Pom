@@ -4,7 +4,13 @@
 #include <iostream>
 #include "AMReX_FabArray.H"
 
-double getLimiter(double di1, double di2, double omega);
+// Slope limiters. Called via a function pointer
+double getLimiter_VanLeer(double di1, double di2, double omega);
+double getLimiter_VanAlbada(double di1, double di2, double omega);
+double getLimiter_UltraBee(double di1, double di2, double omega);
+double getLimiter_SuperBee(double di1, double di2, double omega);
+double getLimiter_MinBee(double di1, double di2, double omega);
+
 double getSlopeX(amrex::Array4<amrex::Real> stateOld, int U, int i, int j, int niGhosts, double omega);
 double getSlopeY(amrex::Array4<amrex::Real> stateOld, int U, int i, int j, int niGhosts, double omega);
 
@@ -20,6 +26,29 @@ double calcFluxE(double u, double E, double p);
 
 #define GETOLD(D, I, J) stateOld(I, J, 0, D)
 #define GETNEW(D, I, J) stateNew(I, J, 0, D)
+
+// Slope limiter function pointer. Default to van Leer
+double (*getLimiter)(double, double, double) = getLimiter_VanLeer;
+
+void Hydro::SetLimiter(int limiter) {
+    switch(limiter) {
+        case 1:
+            getLimiter = getLimiter_VanAlbada;
+            break;
+        case 2:
+            getLimiter = getLimiter_UltraBee;
+            break;
+        case 3:
+            getLimiter = getLimiter_SuperBee;
+            break;
+        case 4:
+            getLimiter = getLimiter_MinBee;
+            break;
+        default:
+            getLimiter = getLimiter_VanLeer;
+            break;
+    }
+}
 
 void Hydro::MUSCLHancock2D(
     amrex::Array4<amrex::Real> const& stateOld,
@@ -308,7 +337,8 @@ double getSlopeY(amrex::Array4<amrex::Real> stateOld, int U, int i, int j, int n
     return diU;
 }
 
-double getLimiter(double di1, double di2, double omega) {
+// Slope limiters
+double getLimiter_VanLeer(double di1, double di2, double omega) {
     double xi;
     // Slope limiter - Van Leer
     if (di2 == 0) {
@@ -320,6 +350,82 @@ double getLimiter(double di1, double di2, double omega) {
         } else {
             double xiR = 2.0/(1.0 - omega + (1 + omega)*r);
             xi = std::min(2*r/(1+r), xiR);
+        }
+    }
+    return xi;
+}
+
+double getLimiter_VanAlbada(double di1, double di2, double omega) {
+    double xi;
+    // Slope limiter - Van Albada
+    if (di2 == 0) {
+        xi = 0.0;
+    } else {
+        double r = di1/di2;
+        if (r <= 0.0) {
+            xi = 0.0;
+        } else {
+            double xiR = 2.0/(1.0 - omega + (1 + omega)*r);
+            xi = std::min(r*(1+r)/(1+r*r), xiR);
+        }
+    }
+    return xi;
+}
+
+double getLimiter_UltraBee(double di1, double di2, double omega) {
+    double xi;
+    // Slope limiter - ULTRABEE
+    if (di2 == 0) {
+        xi = 0.0;
+    } else {
+        double r = di1/di2;
+        if (r <= 0.0) {
+            xi = 0.0;
+        } else {
+            double xiR = 2.0/(1.0 - omega + (1 + omega)*r);
+            double xiL = (2.0*r)/(1.0 - omega + (1 + omega)*r);
+            xi = std::min(xiL, xiR);
+        }
+    }
+    return xi;
+}
+
+double getLimiter_SuperBee(double di1, double di2, double omega) {
+    double xi;
+    // Slope limiter - SUPERBEE
+    if (di2 == 0) {
+        xi = 0.0;
+    } else {
+        double r = di1/di2;
+        if (r <= 0.0) {
+            xi = 0.0;
+        } else if (r <= 0.5) {
+            xi = 2*r;
+        } else if (r <= 1.0) {
+            xi = 1.0;
+        } else {
+            double xiR = 2.0/(1.0 - omega + (1 + omega)*r);
+            xi = std::min(r, xiR);
+            xi = std::min(xi, 2.0);
+        }
+    }
+    return xi;
+}
+
+double getLimiter_MinBee(double di1, double di2, double omega) {
+    double xi;
+    // Slope limiter - MINBEE
+    if (di2 == 0) {
+        xi = 0.0;
+    } else {
+        double r = di1/di2;
+        if (r <= 0.0) {
+            xi = 0.0;
+        } else if (r <= 1.0) {
+            xi = r;
+        } else {
+            double xiR = 2.0/(1.0 - omega + (1 + omega)*r);
+            xi = std::min(1.0, xiR);
         }
     }
     return xi;

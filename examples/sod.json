@@ -11,7 +11,7 @@
         "Y" : {
             "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
             "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
-            "MOMU" : ["reflect_odd", "reflect_odd", "reflect_odd", "reflect_odd"],
+            "MOMU" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
             "MOMV" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
             "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
         }
@@ -19,22 +19,16 @@
 
     "mesh": {
         "materials": {
-            "high": [1.0, 1.0],
-            "dense": [10.0, 0.1],
-            "mid": [0.5, 0.5],
-            "background": [0.125, 0.1]
+            "right": [0.125, 0.1],
+            "background": [1.0, 1.0]
         },
         "domain": {
             "BL": [0.0, 0.0],
-            "TR": [40.0, 10.0]
+            "TR": [1.0, 1.0]
         },
-        "cells": [200, 50],
+        "cells": [50, 50],
         "entities":[
-            ["BOX", 19.5, -1.0, 20.5, 11.0, "high"],
-            ["CIRCLE", 20.0, 5.0, 3.0, "dense"]
-        ],
-        "momenta": [
-            ["BOX", -1.0, -1.0, 1.0, 11.0, 2.0, 0.0]
+            ["BOX", 0.5, -1.0, 1.1, 2.0, "right"]
         ]
     }
 }

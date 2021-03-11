@@ -26,6 +26,8 @@ namespace Hydro {
         double gamma
     );
 
+    void SetLimiter(int limiter);
+
     void MUSCLHancock2D(
         amrex::Array4<amrex::Real> const& stateOld,
         int iIndex, int jIndex, int kIndex, int niGhosts,

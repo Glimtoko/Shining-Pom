@@ -32,42 +32,6 @@ AmrCorePom::AmrCorePom(
     // Read problem input
     Read_Inputs();
 
-    // // Read mesh file and communicate contents
-    // std::string meshJSONFile;
-    // char *meshJSON;
-    // int JSONlen;
-    // if (ParallelDescriptor::IOProcessor()) {
-    //     ParmParse pp("mesh");
-    //     pp.query("file", meshJSONFile);
-
-    //     std::ifstream t(meshJSONFile);
-    //     std::stringstream buffer;
-    //     buffer << t.rdbuf();
-    //     std::string meshJSONStr = buffer.str();
-
-    //     std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
-    //         [](unsigned char c){ return std::tolower(c); });
-
-    //     JSONlen = meshJSONStr.size() + 1;
-    //     const char *meshJSONConst = meshJSONStr.c_str();
-
-    //     meshJSON = new char[JSONlen];
-
-    //     if (ParallelDescriptor::IOProcessor()) {
-    //         strcpy(meshJSON, meshJSONConst);
-    //     }
-    // }
-
-    // ParallelDescriptor::Bcast<int>(&JSONlen, 1);
-    // if (!ParallelDescriptor::IOProcessor()) {
-    //     meshJSON = new char[JSONlen];
-    // }
-    // ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
-
-    // rapidjson::Document mesh;
-    // mesh.Parse(meshJSON);
-
-
     int nlevs_max = max_level + 1;
 
     // Update istep and nsubsteps
@@ -88,6 +52,7 @@ AmrCorePom::AmrCorePom(
     bcs = bcs_in;
 
     flux_reg.resize(nlevs_max+1);
+
 }
 
 
@@ -107,6 +72,11 @@ void AmrCorePom::Read_Inputs()
         pp.query("max_step", max_step);
         pp.query("cfl", cfl);
         pp.query("do_reflux", do_reflux);
+
+        // Set hydro settings
+        int limiter = 0;
+        pp.query("limiter", limiter);
+        Hydro::SetLimiter(limiter);
     }
 
     // AMR setup - note a lot of the AMR input is read automatically
@@ -189,7 +159,7 @@ void AmrCorePom::Evolve()
         if (cur_time >= stop_time - 1.e-6*dt[0]) break;
     }
 
-    if (plot_int > 0 && istep[0] > last_plot_file_step) {
+    if (plot_int == 0 || istep[0] > last_plot_file_step) {
 	    WritePlotFile();
     }
 
@@ -501,16 +471,16 @@ void AmrCorePom::SetGeometry(
         }
     }
 
-    // Add momenta
+    // Add velocity
     if (mesh.HasMember("mesh")) {
         rapidjson::Value &mesh_container = mesh["mesh"];
-        if (mesh_container.HasMember("momenta")) {
-            rapidjson::Value &momenta = mesh_container["momenta"];
+        if (mesh_container.HasMember("velocity")) {
+            rapidjson::Value &velocity = mesh_container["velocity"];
             for (
-                rapidjson::SizeType idx = 0; idx < momenta.Size(); idx++
+                rapidjson::SizeType idx = 0; idx < velocity.Size(); idx++
             )
             {
-                const rapidjson::Value& itr = momenta[idx];
+                const rapidjson::Value& itr = velocity[idx];
                 std::string entity = itr[0].GetString();
                 if (entity == "circle")
                 {

@@ -1,9 +1,10 @@
 # PROBLEM DESCRIPTION
 pom.problem = 4
 pom.max_step  = 1000000
-pom.end_time = 40.0
+pom.end_time = 0.2
 pom.cfl = 0.7     
 pom.do_reflux = 0
+pom.limier = 2
 
 
 # PROBLEM SIZE & GEOMETRY
@@ -24,7 +25,7 @@ amr.max_level       = 2       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.blocking_factor = 1       # block factor in grid generation
 amr.max_grid_size   = 100
-amr.regrid_int      = 2       # how often to regrid
+amr.regrid_int      = 1       # how often to regrid
 
 
 # REFINEMENT CRITERIA
@@ -36,10 +37,10 @@ amr.r_refine = 0.3 0.5 0.8 0.9
 # PLOTFILES
 output.subdir = output
 output.plot_file  = plot    # root name of plot file
-output.plot_int   = 10     # number of timesteps between plot files
+output.plot_int   = 20000   # number of timesteps between plot files
 
 
 # CHECKPOINT
 output.chk_file = chk      # root name of checkpoint file
-output.chk_int  = 25       # number of timesteps between checkpoint files
+output.chk_int  = 0        # number of timesteps between checkpoint files
 #output.restart  = chk00060 # restart from this checkpoint file
