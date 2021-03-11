@@ -26,36 +26,58 @@ int main(int argc, char* argv[])
         AmrInfo amr_info = pom::GetAmrInfo();
 
         // Read mesh data
-        std::string meshJSONFile;
+        std::string meshJSONFile {""};
+        std::string meshJSONEmbed {""};
         char *meshJSON;
         int JSONlen;
-        if (ParallelDescriptor::IOProcessor()) {
-            ParmParse pp("mesh");
-            pp.query("file", meshJSONFile);
+        ParmParse pp("mesh");
+        pp.query("file", meshJSONFile);
+        pp.query("embed", meshJSONEmbed);
+        
+        if (meshJSONEmbed != "") {
+            Print() << "Using embedded mesh description" << std::endl;
 
-            std::ifstream t(meshJSONFile);
-            std::stringstream buffer;
-            buffer << t.rdbuf();
-            std::string meshJSONStr = buffer.str();
+            // Force lower case
+            std::transform(meshJSONEmbed.begin(), meshJSONEmbed.end(), meshJSONEmbed.begin(),
+                                [](unsigned char c){ return std::tolower(c); });
 
-            std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
-                [](unsigned char c){ return std::tolower(c); });
+            // RapidJSON requires double quoted strings, but AMReX input format
+            // forced single quotes, so convert these
+            std::replace(meshJSONEmbed.begin(), meshJSONEmbed.end(), '\'', '"');
 
-            JSONlen = meshJSONStr.size() + 1;
-            const char *meshJSONConst = meshJSONStr.c_str();
+            JSONlen = meshJSONEmbed.size() + 1;
+            const char *meshJSONConst = meshJSONEmbed.c_str();
 
             meshJSON = new char[JSONlen];
-
+            strcpy(meshJSON, meshJSONConst);
+        } else {
+            Print() << "Using mesh description from file " << meshJSONFile << std::endl;
             if (ParallelDescriptor::IOProcessor()) {
-                strcpy(meshJSON, meshJSONConst);
-            }
-        }
 
-        ParallelDescriptor::Bcast<int>(&JSONlen, 1);
-        if (!ParallelDescriptor::IOProcessor()) {
-            meshJSON = new char[JSONlen];
+                std::ifstream t(meshJSONFile);
+                std::stringstream buffer;
+                buffer << t.rdbuf();
+                std::string meshJSONStr = buffer.str();
+
+                std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
+                    [](unsigned char c){ return std::tolower(c); });
+
+                JSONlen = meshJSONStr.size() + 1;
+                const char *meshJSONConst = meshJSONStr.c_str();
+
+                meshJSON = new char[JSONlen];
+
+                if (ParallelDescriptor::IOProcessor()) {
+                    strcpy(meshJSON, meshJSONConst);
+                }
+            }
+
+            ParallelDescriptor::Bcast<int>(&JSONlen, 1);
+            if (!ParallelDescriptor::IOProcessor()) {
+                meshJSON = new char[JSONlen];
+            }
+            ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
         }
-        ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
 
 
         amrex::Vector<std::string> variables {"Rho", "MomU", "MomV", "E", "dt"};

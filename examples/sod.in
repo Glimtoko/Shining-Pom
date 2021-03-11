@@ -4,16 +4,10 @@ pom.max_step  = 1000000
 pom.end_time = 0.2
 pom.cfl = 0.7     
 pom.do_reflux = 0
-pom.limier = 2
+pom.limiter = 2
 
-
-# PROBLEM SIZE & GEOMETRY
-geometry.is_periodic =  0 0 0
-geometry.coord_sys   =  0       # 0 => cart
-geometry.prob_lo     =  0.0  0.0
-geometry.prob_hi     =  1.0  1.0
-
-mesh.file = /home/nick/programming/git/Shining-Pom/examples/sod.json
+# Mesh file not used. See embedded mesh below
+#mesh.file = /home/nick/programming/git/Shining-Pom/examples/sod.json
 
 
 # VERBOSITY
@@ -44,3 +38,41 @@ output.plot_int   = 20000   # number of timesteps between plot files
 output.chk_file = chk      # root name of checkpoint file
 output.chk_int  = 0        # number of timesteps between checkpoint files
 #output.restart  = chk00060 # restart from this checkpoint file
+
+# Mesh. Note all strings *must* be in single quotes
+mesh.embed = "
+{
+    'boundaries': {
+        'X' : {
+            'E' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even'],
+            'RHO' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even'],
+            'MOMU' : ['reflect_odd', 'reflect_odd', 'reflect_odd', 'reflect_odd'],
+            'MOMV' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even'],
+            'DT' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even']
+        },
+
+        'Y' : {
+            'E' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even'],
+            'RHO' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even'],
+            'MOMU' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even'],
+            'MOMV' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even'],
+            'DT' : ['reflect_even', 'reflect_even', 'reflect_even', 'reflect_even']
+        }
+    },
+
+    'mesh': {
+        'materials': {
+            'right': [0.125, 0.1],
+            'background': [1.0, 1.0]
+        },
+        'domain': {
+            'BL': [0.0, 0.0],
+            'TR': [1.0, 1.0]
+        },
+        'cells': [50, 50],
+        'entities':[
+            ['BOX', 0.5, -1.0, 1.1, 2.0, 'right']
+        ]
+    }
+}
+"
