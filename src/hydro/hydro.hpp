@@ -10,8 +10,6 @@
 
 #include "AMReX_FabArray.H"
 
-// #include "mesh2d.hpp"
-
 namespace Hydro {
     struct Flux {
         double rho;
@@ -33,27 +31,6 @@ namespace Hydro {
         int iIndex, int jIndex, int kIndex, int niGhosts,
         double gamma, double dt, double dx, double dy,
         amrex::Array4<amrex::Real> const& stateNew
-    );
-
-    void MUSCLHancock2D_Reconstruct(
-        amrex::Array4<amrex::Real> const& stateOld,
-        int i, int j, int k,
-        double gamma, double dt, double dx, double dy,
-        amrex::Array4<amrex::Real> const& left,
-        amrex::Array4<amrex::Real> const& right,
-        amrex::Array4<amrex::Real> const& down,
-        amrex::Array4<amrex::Real> const& up
-    );
-
-    void calculateFluxes(
-        amrex::Array4<amrex::Real> const& left,
-        amrex::Array4<amrex::Real> const& right,
-        amrex::Array4<amrex::Real> const& down,
-        amrex::Array4<amrex::Real> const& up,
-        int i, int j, int k,
-        double gamma,
-        amrex::Array4<amrex::Real> const& fluxX,
-        amrex::Array4<amrex::Real> const& fluxY
     );
 
     void update(

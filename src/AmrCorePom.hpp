@@ -153,9 +153,6 @@ private:
     // Put together an array of multifabs for writing
     amrex::Vector<const amrex::MultiFab*> PlotFileMF() const;
 
-    // Set plotfile variables names
-    // amrex::Vector<std::string> PlotFileVarNames() const;
-
     // Write plotfile to disk
     void WritePlotFile() const;
 
@@ -228,7 +225,8 @@ private:
 
     // Plotfile prefix and frequency
     std::string plot_file {"output/plt"};
-    int plot_int = 10;
+    int plot_int = -1; // Default -> Disable plots
+    amrex::Real plot_dt = -1.0; // Default -> Disable plots
 
     // Checkpoint prefex and frequency
     std::string chk_file {"output/chkpt"};

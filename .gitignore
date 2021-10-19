@@ -35,6 +35,7 @@ shiningpom
 BUILD
 VSC_BUILD
 bin
+build
 
 # Misc
 *.png

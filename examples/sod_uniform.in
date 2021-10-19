@@ -7,17 +7,17 @@ pom.do_reflux = 0
 pom.limiter = 2     # UltreBee
 
 # Mesh file
-mesh.file = /home/nick/Shining-Pom-master/examples/sod.json
+mesh.file = /home/nick/Shining-Pom-master/examples/sod_uniform.json
 
 # VERBOSITY
 amr.v              = 0       # verbosity in Amr. 1 -> Include FINE step prints
 
 
 # REFINEMENT
-amr.max_level       = 3       # maximum level number allowed
+amr.max_level       = 1       # maximum level number allowed
 amr.ref_ratio       = 2 2 2 2 # refinement ratio
 amr.blocking_factor = 1       # block factor in grid generation
-amr.max_grid_size   = 100
+amr.max_grid_size   = 400
 amr.regrid_int      = 1       # how often to regrid
 
 

@@ -95,6 +95,7 @@ void AmrCorePom::Read_Inputs()
     {
         ParmParse pp("output");
         pp.query("plot_int", plot_int);
+        pp.query("plot_dt", plot_dt);
         pp.query("plot_file", plot_file);
 
         pp.query("chk_int", chk_int);
@@ -125,6 +126,10 @@ void AmrCorePom::Evolve()
     Real cur_time = t_new[0];
     int last_plot_file_step = 0;
     int last_chkpt_file_step = 0;
+    amrex::Real time_since_plot = 0.0;
+
+    // Time zero plot
+    WritePlotFile();
 
     for (int step = istep[0]; step < max_step && cur_time < stop_time; ++step) {
         if (Verbose())
@@ -147,6 +152,13 @@ void AmrCorePom::Evolve()
         }
 
         if (plot_int > 0 && (step+1) % plot_int == 0) {
+            last_plot_file_step = step+1;
+            WritePlotFile();
+        }
+
+        time_since_plot += dt[0];
+        if (plot_int < 0 && plot_dt > 0.0 && time_since_plot > plot_dt) {
+            time_since_plot = 0.0;
             last_plot_file_step = step+1;
             WritePlotFile();
         }

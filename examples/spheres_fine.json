@@ -1,0 +1,38 @@
+{
+    "boundaries": {
+        "X" : {
+            "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMU" : ["reflect_odd", "reflect_odd", "reflect_odd", "reflect_odd"],
+            "MOMV" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
+        },
+
+        "Y" : {
+            "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMU" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMV" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
+        }
+    },
+
+    "mesh": {
+        "materials": {
+            "background": [0.125, 0.1],
+            "pulse": [1.0, 1.0],
+            "bubble": [0.5, 0.1]
+        },
+        "domain": {
+            "BL": [0.0, 0.0],
+            "TR": [40.0, 10.0]
+        },
+        "cells": [800, 200],
+        "entities":[
+            ["CIRCLE", 0.0, 5.0, 2.0, "pulse"],
+            ["CIRCLE", 20.0, 3.0, 1.5, "bubble"],
+            ["CIRCLE", 20.0, 7.0, 1.5, "bubble"],
+            ["CIRCLE", 10.0, 5.0, 2.0, "bubble"]
+        ]
+    }
+}

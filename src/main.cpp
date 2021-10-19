@@ -53,16 +53,19 @@ int main(int argc, char* argv[])
         } else {
             Print() << "Using mesh description from file " << meshJSONFile << std::endl;
             if (ParallelDescriptor::IOProcessor()) {
+		        std::cout << "Reading mesh file" << std::endl;
 
                 std::ifstream t(meshJSONFile);
                 std::stringstream buffer;
                 buffer << t.rdbuf();
                 std::string meshJSONStr = buffer.str();
+		        std::cout << meshJSONStr << std::endl;
 
                 std::transform(meshJSONStr.begin(), meshJSONStr.end(), meshJSONStr.begin(),
                     [](unsigned char c){ return std::tolower(c); });
 
                 JSONlen = meshJSONStr.size() + 1;
+		        std::cout << JSONlen << std::endl;
                 const char *meshJSONConst = meshJSONStr.c_str();
 
                 meshJSON = new char[JSONlen];
@@ -78,6 +81,8 @@ int main(int argc, char* argv[])
             }
             ParallelDescriptor::Bcast<char>(meshJSON, JSONlen);
         }
+
+	    std::cout << "MESH: " << meshJSON << std::endl;
 
 
         amrex::Vector<std::string> variables {"Rho", "MomU", "MomV", "E", "dt"};

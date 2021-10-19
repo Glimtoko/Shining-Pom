@@ -1,0 +1,34 @@
+{
+    "boundaries": {
+        "X" : {
+            "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMU" : ["reflect_odd", "reflect_odd", "reflect_odd", "reflect_odd"],
+            "MOMV" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
+        },
+
+        "Y" : {
+            "E" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "RHO" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMU" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "MOMV" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"],
+            "DT" : ["reflect_even", "reflect_even", "reflect_even", "reflect_even"]
+        }
+    },
+
+    "mesh": {
+        "materials": {
+            "right": [0.125, 0.1],
+            "background": [1.0, 1.0]
+        },
+        "domain": {
+            "BL": [0.0, 0.0],
+            "TR": [1.0, 1.0]
+        },
+        "cells": [400, 400],
+        "entities":[
+            ["BOX", 0.5, -1.0, 1.1, 2.0, "right"]
+        ]
+    }
+}
